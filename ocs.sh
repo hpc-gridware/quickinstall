@@ -5,14 +5,14 @@
 # 
 # Usage:
 #   curl -s <script_url> | sh                    # Installs default version
-#   OCS_VERSION=9.0.6 curl -s <script_url> | sh  # Installs specific version
+#   curl -s <script_url> | OCS_VERSION=9.0.6 sh  # Installs specific version
 #
 
 set -e  # Exit on error
 #set -u  # Treat unset variables as errors
 
 # Default version - can be overridden by environment variable
-OCS_VERSION="${OCS_VERSION:-9.0.7}"
+OCS_VERSION="${OCS_VERSION:-9.0.6}"
 
 echo "Starting Open Cluster Scheduler installation (version: $OCS_VERSION)..."
 

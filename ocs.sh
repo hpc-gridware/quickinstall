@@ -12,7 +12,7 @@ set -e  # Exit on error
 #set -u  # Treat unset variables as errors
 
 # Default version - can be overridden by environment variable
-OCS_VERSION="${OCS_VERSION:-9.0.6}"
+OCS_VERSION="${OCS_VERSION:-9.0.7}"
 
 echo "Starting Open Cluster Scheduler installation (version: $OCS_VERSION)..."
 

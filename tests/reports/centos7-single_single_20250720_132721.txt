@@ -1,0 +1,20 @@
+OCS Test Report for centos7-single
+Test Type: single
+Date: Sun Jul 20 13:27:21 UTC 2025
+Hostname: centos7-single
+OS Info: NAME="CentOS Linux"
+VERSION="7 (Core)"
+ID="centos"
+ID_LIKE="rhel fedora"
+VERSION_ID="7"
+=========================================
+
+=========================================
+TEST SUMMARY
+=========================================
+Total tests: 11
+Passed: 11
+Failed: 0
+Success rate: 100%
+=========================================
+[0;32m[PASS][0m All tests passed!

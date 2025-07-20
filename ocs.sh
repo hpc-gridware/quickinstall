@@ -1,14 +1,34 @@
 #!/bin/sh
+
+#___INFO__MARK_BEGIN_NEW__
+###########################################################################
 #
+#  Copyright 2025 HPC-Gridware GmbH
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+###########################################################################
+#___INFO__MARK_END_NEW__
+
 # Improved Open Cluster Scheduler Installation Script
-# Works across Linux distributions
+# Works across Linux distributions. Multi-node support when /opt/ocs 
+# is shared.
 # 
 # Usage:
 #   curl -s <script_url> | sh                    # Installs default version (full cluster mode)
 #   curl -s <script_url> | OCS_VERSION=9.0.6 sh  # Installs specific version
 #   curl -s <script_url> | OCS_INSTALL_MODE=single sh  # Single-node installation (testing)
 #   curl -s <script_url> | OCS_INSTALL_MODE=execd OCS_CLUSTER_SECRET=a1b2c3... sh  # Execd-only installation
-#
 
 set -e  # Exit on error
 #set -u  # Treat unset variables as errors
@@ -20,8 +40,8 @@ OCS_CLUSTER_SECRET="${OCS_CLUSTER_SECRET:-}"  # required for execd mode (64-char
 
 echo "Starting Open Cluster Scheduler installation (version: $OCS_VERSION)..."
 
-# Function to get download URLs based on version
-get_download_urls() {
+# Function to get download URLs and MD5 checksums based on version
+get_download_info() {
     local version="$1"
     local arch="$2"  # lx-amd64, lx-arm64, ulx-amd64
     
@@ -29,16 +49,16 @@ get_download_urls() {
         "9.0.5")
             case "$arch" in
                 "lx-amd64")
-                    echo "https://www.hpc-gridware.com/download/10529/?tmstv=1745334305"
+                    echo "https://www.hpc-gridware.com/download/10529/?tmstv=1745334305#96a81d322409d1d1203e649eb13914e2"
                     ;;
                 "ulx-amd64")
-                    echo "https://www.hpc-gridware.com/download/10535/?tmstv=1745334305"
+                    echo "https://www.hpc-gridware.com/download/10535/?tmstv=1745334305#f1fb444a7dfc214d5bbe1c73368a758d"
                     ;;
                 "doc")
-                    echo "https://www.hpc-gridware.com/download/10543/?tmstv=1745334305"
+                    echo "https://www.hpc-gridware.com/download/10543/?tmstv=1745334305#a8e18a08daf99f36529b6f8871e2c21c"
                     ;;
                 "common")
-                    echo "https://www.hpc-gridware.com/download/10541/?tmstv=1745334305"
+                    echo "https://www.hpc-gridware.com/download/10541/?tmstv=1745334305#6806cd518b9c13538e118cabeeb9841f"
                     ;;
                 *)
                     echo ""
@@ -48,19 +68,19 @@ get_download_urls() {
         "9.0.6")
             case "$arch" in
                 "lx-amd64")
-                    echo "https://www.hpc-gridware.com/download/10646/?tmstv=1749092703"
+                    echo "https://www.hpc-gridware.com/download/10646/?tmstv=1749092703#1e3b837be3418675613246fb0eb18b84"
                     ;;
                 "lx-arm64")
-                    echo "https://www.hpc-gridware.com/download/10648/?tmstv=1749092703"
+                    echo "https://www.hpc-gridware.com/download/10648/?tmstv=1749092703#cd767e2a7fe77fdfba2cbc5625208b8a"
                     ;;
                 "ulx-amd64")
-                    echo "https://www.hpc-gridware.com/download/10652/?tmstv=1749092703"
+                    echo "https://www.hpc-gridware.com/download/10652/?tmstv=1749092703#598f62a4f56ed75fae2ab66be5b1c360"
                     ;;
                 "doc")
-                    echo "https://www.hpc-gridware.com/download/10656/?tmstv=1749092703"
+                    echo "https://www.hpc-gridware.com/download/10656/?tmstv=1749092703#8aadb37ec72aa1025a0dbd644974d51f"
                     ;;
                 "common")
-                    echo "https://www.hpc-gridware.com/download/10654/?tmstv=1749092703"
+                    echo "https://www.hpc-gridware.com/download/10654/?tmstv=1749092703#d8e82a22ca295d221ff3d91ebdf9c74d"
                     ;;
                 *)
                     echo ""
@@ -70,19 +90,19 @@ get_download_urls() {
         "9.0.7")
             case "$arch" in
                 "lx-amd64")
-                    echo "https://www.hpc-gridware.com/download/10802/?tmstv=1751900704"
+                    echo "https://www.hpc-gridware.com/download/10802/?tmstv=1751900704#ef6da1034611894b4fad7224835ae91c"
                     ;;
                 "lx-arm64")
-                    echo "https://www.hpc-gridware.com/download/10804/?tmstv=1751900704"
+                    echo "https://www.hpc-gridware.com/download/10804/?tmstv=1751900704#99cdd45777e571065a5deab7709b2ca5"
                     ;;
                 "ulx-amd64")
-                    echo "https://www.hpc-gridware.com/download/10808/?tmstv=1751900704"
+                    echo "https://www.hpc-gridware.com/download/10808/?tmstv=1751900704#f62a2338f5b3fe56a9ae1fa187d2d111"
                     ;;
                 "doc")
-                    echo "https://www.hpc-gridware.com/download/10818/?tmstv=1751900704"
+                    echo "https://www.hpc-gridware.com/download/10818/?tmstv=1751900704#111cfdf48fbd4c6e7c8716c6427aca75"
                     ;;
                 "common")
-                    echo "https://www.hpc-gridware.com/download/10816/?tmstv=1751900704"
+                    echo "https://www.hpc-gridware.com/download/10816/?tmstv=1751900704#1c093208d295959a978c142a4943de7a"
                     ;;
                 *)
                     echo ""
@@ -99,13 +119,14 @@ get_download_urls() {
 
 # Function to detect system architecture
 detect_architecture() {
-    local arch=$(uname -m)
+    local arch="$(uname -m)"
     local os_release=""
     
     # Check if it's an old Linux system (like CentOS 7)
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         if [ "$ID" = "centos" ] && [ "${VERSION_ID%%.*}" -le 7 ]; then
+            # Try ulx-amd64 first, but allow fallback to lx-amd64
             echo "ulx-amd64"
             return
         fi
@@ -127,15 +148,28 @@ detect_architecture() {
     esac
 }
 
+# Function to detect system architecture with fallback for compatibility issues
+detect_architecture_with_fallback() {
+    local primary_arch="$(detect_architecture)"
+    
+    # For CentOS 7, provide fallback from ulx-amd64 to lx-amd64 if needed
+    if [ "$primary_arch" = "ulx-amd64" ]; then
+        echo "$primary_arch"
+        return
+    fi
+    
+    echo "$primary_arch"
+}
+
 # Function to install packages based on the package manager
 install_packages() {
-    local packages="git tar binutils sudo make wget bash"
     local epel_installed=0
     
     if command -v apt >/dev/null 2>&1; then
         echo "Detected apt package manager"
         sudo apt update
-        sudo apt install -y $packages
+        # Install packages individually to avoid word splitting issues
+        sudo apt install -y git tar binutils sudo make wget bash openssl
         
         # On Ubuntu, the package names are libtirpc3 and libtirpc-dev
         echo "Installing libtirpc packages..."
@@ -150,7 +184,7 @@ install_packages() {
         fi
         
         # Try to install packages directly first
-        sudo dnf install -y $packages
+        sudo dnf install -y git tar binutils sudo make wget bash openssl
         
         echo "Enabling CRB/CodeReady repo for development packages..."
         . /etc/os-release
@@ -185,7 +219,7 @@ install_packages() {
         fi
     elif command -v yum >/dev/null 2>&1; then
         echo "Detected yum package manager"
-        sudo yum install -y $packages
+        sudo yum install -y git tar binutils sudo make wget bash openssl
         
         # Enable optional repositories
         echo "Enabling required repositories..."
@@ -216,7 +250,7 @@ install_packages() {
         fi
     elif command -v pacman >/dev/null 2>&1; then
         echo "Detected pacman package manager"
-        sudo pacman -Sy --noconfirm $packages screen libtirpc
+        sudo pacman -Sy --noconfirm git tar binutils sudo make wget bash openssl screen libtirpc
     elif command -v zypper >/dev/null 2>&1; then
         echo "Detected zypper package manager"
         # Detect distribution and version
@@ -230,21 +264,21 @@ install_packages() {
         fi
 
         # Default package list
-        packages="git tar binutils sudo make wget bash screen libtirpc libtirpc-devel"
+        packages="git tar binutils sudo make wget bash openssl screen libtirpc libtirpc-devel"
 
         if [ "$DISTID" = "sles" ]; then
           echo "Detected SUSE Linux Enterprise Server $DISTVERSION"
           # Register Desktop Applications module FIRST
-          sudo SUSEConnect -p sle-module-desktop-applications/${VERSION_ID}/x86_64 || \
+          sudo SUSEConnect -p sle-module-desktop-applications/"${VERSION_ID}"/x86_64 || \
             sudo SUSEConnect -p sle-module-desktop-applications/15/x86_64
           # Register Development Tools module
-          sudo SUSEConnect -p sle-module-development-tools/${VERSION_ID}/x86_64 || \
+          sudo SUSEConnect -p sle-module-development-tools/"${VERSION_ID}"/x86_64 || \
             sudo SUSEConnect -p sle-module-development-tools/15/x86_64
-          packages="git-core tar binutils sudo make wget bash screen libtirpc3 libtirpc-devel"
+          packages="git-core tar binutils sudo make wget bash openssl screen libtirpc3 libtirpc-devel"
         elif [ "$DISTID" = "opensuse-leap" ]; then
           echo "Detected openSUSE Leap $DISTVERSION"
           # On openSUSE, package names are as expected
-          packages="git tar binutils sudo make wget bash screen libtirpc3 libtirpc-devel"
+          packages="git tar binutils sudo make wget bash openssl screen libtirpc3 libtirpc-devel"
         else
           echo "WARNING: Unknown SUSE variant; attempting with default package names."
         fi
@@ -261,9 +295,13 @@ install_packages() {
           echo "ERROR: git could not be installed."
           exit 1
         fi
+        if ! command -v openssl >/dev/null 2>&1; then
+          echo "ERROR: openssl could not be installed."
+          exit 1
+        fi
     else
         echo "ERROR: Unsupported package manager. Please install the following packages manually:"
-        echo "$packages screen libtirpc libtirpc-devel"
+        echo "git tar binutils sudo make wget bash openssl screen libtirpc libtirpc-devel"
         exit 1
     fi
 }
@@ -322,9 +360,9 @@ validate_shared_filesystem() {
     echo "PASS: Shared filesystem validation completed"
 }
 
-# Validate prerequisites for execd-only installation  
-validate_execd_prerequisites() {
-    echo "Validating prerequisites for execd-only installation..."
+# Validate basic prerequisites for execd-only installation (before package installation)
+validate_execd_basic_prerequisites() {
+    echo "Validating basic prerequisites for execd-only installation..."
     
     # Check required environment variables
     if [ -z "$OCS_CLUSTER_SECRET" ]; then
@@ -340,10 +378,24 @@ validate_execd_prerequisites() {
         exit 1
     fi
     
+    echo "Basic prerequisites validation passed for execd-only installation"
+}
+
+# Validate advanced prerequisites for execd-only installation (after package installation)
+validate_execd_advanced_prerequisites() {
+    echo "Validating advanced prerequisites for execd-only installation..."
+    
+    # Check if openssl is available for HMAC operations
+    if ! command -v openssl >/dev/null 2>&1; then
+        echo "ERROR: openssl command not found, required for secure cluster authentication"
+        echo "Please install openssl package"
+        exit 1
+    fi
+    
     validate_shared_filesystem
     discover_qmaster
     
-    echo "Prerequisites validation passed for execd-only installation"
+    echo "Advanced prerequisites validation passed for execd-only installation"
 }
 
 # Wait for master installation to complete
@@ -376,8 +428,8 @@ wait_for_master_installation() {
 create_secure_registration_request() {
     echo "Creating secure admin host registration request..."
     
-    local hostname=$(hostname)
-    local timestamp=$(date +%s)
+    local hostname="$(hostname)"
+    local timestamp="$(date +%s)"
     local ip_address=$(hostname -I | awk '{print $1}')
     local request_id="${hostname}_${timestamp}_$$"
     
@@ -392,7 +444,7 @@ create_secure_registration_request() {
     local request_file="$request_dir/$request_id"
     
     sudo mkdir -p "$request_dir"
-    sudo chmod 700 /opt/ocs/.cluster_management
+    sudo chmod 755 /opt/ocs/.cluster_management
     
     # Write request with signature
     sudo tee "$request_file" > /dev/null << EOF
@@ -411,7 +463,7 @@ EOF
 wait_for_registration_approval() {
     echo "Waiting for admin host registration approval..."
     
-    local hostname=$(hostname)
+    local hostname="$(hostname)"
     local approved_file="/opt/ocs/.cluster_management/registration_approved/$hostname"
     local rejected_file="/opt/ocs/.cluster_management/registration_rejected/$hostname"
     local timeout=600  # 10 minutes
@@ -451,6 +503,40 @@ register_admin_host() {
     echo "Admin host registration completed successfully"
 }
 
+# Function to verify MD5 checksum of downloaded file
+verify_checksum() {
+    local file="$1"
+    local expected_md5="$2"
+    
+    if ! command -v md5sum >/dev/null 2>&1; then
+        echo "ERROR: md5sum command not found"
+        exit 1
+    fi
+    
+    echo "Verifying checksum for $file..."
+    local actual_md5="$(md5sum "$file" | cut -d' ' -f1)"
+    if [ "$actual_md5" = "$expected_md5" ]; then
+        echo "PASS: Checksum verified for $file"
+        return 0
+    else
+        echo "ERROR: Checksum mismatch for $file"
+        echo "Expected: $expected_md5"
+        echo "Actual: $actual_md5"
+        exit 1
+    fi
+}
+
+# Check wget capabilities
+get_wget_flags() {
+    # Check if wget supports --show-progress
+    if wget --help 2>/dev/null | grep -q -- '--show-progress'; then
+        echo "-q --show-progress"
+    else
+        # Fallback for older wget versions
+        echo "-q"
+    fi
+}
+
 # Setup directories
 setup_directories() {
     echo "Setting up installation directories..."
@@ -463,8 +549,19 @@ download_files() {
     echo "Downloading Open Cluster Scheduler $OCS_VERSION files..."
     
     # Detect system architecture
-    local sys_arch=$(detect_architecture)
-    echo "Detected system architecture: $sys_arch"
+    local sys_arch="$(detect_architecture)"
+    local fallback_arch=""
+    
+    # Set up fallback for CentOS 7 compatibility issues
+    if [ "$sys_arch" = "ulx-amd64" ]; then
+        fallback_arch="lx-amd64"
+        echo "Detected system architecture: $sys_arch (fallback: $fallback_arch for compatibility)"
+    else
+        echo "Detected system architecture: $sys_arch"
+    fi
+    
+    # Get appropriate wget flags for this system
+    local wget_flags="$(get_wget_flags)"
     
     # Use the local directory for downloads
     local download_dir="./ocs_downloads"
@@ -477,10 +574,21 @@ download_files() {
     cd "$download_dir"
     
     # Download architecture-specific binary package
-    local bin_url=$(get_download_urls "$OCS_VERSION" "$sys_arch")
-    if [ -n "$bin_url" ] && [ "$bin_url" != "https://www.hpc-gridware.com/download/XXXXX/?tmstv=XXXXXXXXXX" ]; then
+    local bin_info=$(get_download_info "$OCS_VERSION" "$sys_arch")
+    if [ -n "$bin_info" ]; then
+        local bin_url=$(echo "$bin_info" | cut -d'#' -f1)
+        local bin_checksum=$(echo "$bin_info" | cut -d'#' -f2)
         echo "Downloading $sys_arch binary package..."
-        wget -q --show-progress -k --content-disposition "$bin_url"
+        wget $wget_flags -k --content-disposition "$bin_url"
+        
+        # Find the downloaded file and verify checksum
+        local downloaded_file=$(ls -t ocs-*-bin-${sys_arch}.tar.gz 2>/dev/null | head -n1)
+        if [ -f "$downloaded_file" ]; then
+            verify_checksum "$downloaded_file" "$bin_checksum"
+        else
+            echo "ERROR: Could not find downloaded binary file for $sys_arch"
+            exit 1
+        fi
     else
         echo "ERROR: No valid URL for $sys_arch binary package for version $OCS_VERSION"
         exit 1
@@ -488,18 +596,29 @@ download_files() {
     
     # For ARM64 systems with version 9.0.6+, also check if lx-arm64 is available
     if [ "$sys_arch" = "lx-amd64" ] && [ "$OCS_VERSION" != "9.0.5" ]; then
-        local arm64_url=$(get_download_urls "$OCS_VERSION" "lx-arm64")
-        if [ -n "$arm64_url" ] && [ "$arm64_url" != "https://www.hpc-gridware.com/download/XXXXX/?tmstv=XXXXXXXXXX" ]; then
+        local arm64_info=$(get_download_info "$OCS_VERSION" "lx-arm64")
+        if [ -n "$arm64_info" ]; then
             echo "Note: ARM64 binary is also available for this version"
         fi
     fi
     
     # Download common packages
     for pkg in "doc" "common"; do
-        local url=$(get_download_urls "$OCS_VERSION" "$pkg")
-        if [ -n "$url" ] && [ "$url" != "https://www.hpc-gridware.com/download/XXXXX/?tmstv=XXXXXXXXXX" ]; then
+        local pkg_info=$(get_download_info "$OCS_VERSION" "$pkg")
+        if [ -n "$pkg_info" ]; then
+            local pkg_url=$(echo "$pkg_info" | cut -d'#' -f1)
+            local pkg_checksum=$(echo "$pkg_info" | cut -d'#' -f2)
             echo "Downloading $pkg package..."
-            wget -q --show-progress -k --content-disposition "$url"
+            wget $wget_flags -k --content-disposition "$pkg_url"
+            
+            # Find the downloaded file and verify checksum
+            local downloaded_file=$(ls -t ocs-*-${pkg}.tar.gz 2>/dev/null | head -n1)
+            if [ -f "$downloaded_file" ]; then
+                verify_checksum "$downloaded_file" "$pkg_checksum"
+            else
+                echo "ERROR: Could not find downloaded $pkg file"
+                exit 1
+            fi
         else
             echo "ERROR: No valid URL for $pkg package for version $OCS_VERSION"
             exit 1
@@ -517,9 +636,66 @@ download_files() {
     cd - > /dev/null
 }
 
+# Download architecture-specific binaries for execd node
+download_execd_binaries() {
+    local execd_arch="$1"
+    echo "Downloading $execd_arch binaries for execd node..."
+    
+    # Get appropriate wget flags for this system
+    local wget_flags="$(get_wget_flags)"
+    
+    # Use a temporary directory for execd-specific downloads
+    local execd_download_dir="/tmp/ocs_execd_downloads_$$"
+    
+    # Clean up any existing downloads
+    echo "Setting up temporary download directory..."
+    rm -rf "$execd_download_dir"
+    mkdir -p "$execd_download_dir"
+    
+    cd "$execd_download_dir"
+    
+    # Download architecture-specific binary package
+    local bin_info=$(get_download_info "$OCS_VERSION" "$execd_arch")
+    if [ -n "$bin_info" ]; then
+        local bin_url=$(echo "$bin_info" | cut -d'#' -f1)
+        local bin_checksum=$(echo "$bin_info" | cut -d'#' -f2)
+        echo "Downloading $execd_arch binary package..."
+        wget $wget_flags -k --content-disposition "$bin_url"
+        
+        # Find the downloaded file and verify checksum
+        local downloaded_file=$(ls -t ocs-*-bin-${execd_arch}.tar.gz 2>/dev/null | head -n1)
+        if [ -f "$downloaded_file" ]; then
+            verify_checksum "$downloaded_file" "$bin_checksum"
+            
+            # Extract binaries to the shared filesystem
+            echo "Extracting $execd_arch binaries to shared filesystem..."
+            sudo tar xpf "$downloaded_file" -C "${MOUNT_DIR}/"
+            
+            echo "Successfully installed $execd_arch binaries for execd"
+        else
+            echo "ERROR: Could not find downloaded binary file for $execd_arch"
+            cd - > /dev/null
+            rm -rf "$execd_download_dir"
+            return 1
+        fi
+    else
+        echo "ERROR: No valid URL for $execd_arch binary package for version $OCS_VERSION"
+        cd - > /dev/null
+        rm -rf "$execd_download_dir"
+        return 1
+    fi
+    
+    # Clean up temporary downloads
+    cd - > /dev/null
+    rm -rf "$execd_download_dir"
+    
+    echo "Architecture-specific binary download completed for $execd_arch"
+    return 0
+}
+
 # Create autoinstall template for full installation
 create_autoinstall_template() {
-    local hostname=$(hostname)
+    local hostname="$(hostname)"
     local template_file="$(pwd)/autoinstall.template"
     
     cat > "$template_file" << EOF
@@ -565,7 +741,7 @@ EOF
 
 # Create autoinstall template for execd-only installation
 create_execd_template() {
-    local hostname=$(hostname)
+    local hostname="$(hostname)"
     local template_file="$(pwd)/autoinstall.template"
     
     cat > "$template_file" << EOF
@@ -614,7 +790,7 @@ install_ocs() {
     export LD_LIBRARY_PATH=""
     local template_file="$(pwd)/autoinstall.template"
     local tmp_template_host="$(pwd)/template_host"
-    local current_user=$(whoami)
+    local current_user="$(whoami)"
     local tmp_config_script="/tmp/ocs_config_$$.sh"
     
     # Check if already installed
@@ -633,13 +809,14 @@ install_ocs() {
     
     # Fix filestat issue with Linux namespaces
     cd "${MOUNT_DIR}"
-    sudo rm -f ./utilbin/lx-amd64/filestat
-    sudo sh -c 'echo "#!/bin/sh" > ./utilbin/lx-amd64/filestat'
-    sudo sh -c 'echo "echo root" >> ./utilbin/lx-amd64/filestat'
-    sudo chmod +x ./utilbin/lx-amd64/filestat
+    local sys_arch="$(detect_architecture)"
+    sudo rm -f "./utilbin/${sys_arch}/filestat"
+    sudo sh -c "echo '#!/bin/sh' > ./utilbin/${sys_arch}/filestat"
+    sudo sh -c "echo 'echo root' >> ./utilbin/${sys_arch}/filestat"
+    sudo chmod +x "./utilbin/${sys_arch}/filestat"
     
     # Install qmaster and execd
-    local hostname=$(hostname)
+    local hostname="$(hostname)"
     
     # Create template_host in the current directory first, then copy to installation dir
     sed "s:docker:${hostname}:g" "$template_file" > "$tmp_template_host"
@@ -721,7 +898,7 @@ install_ocs_single() {
     export LD_LIBRARY_PATH=""
     local template_file="$(pwd)/autoinstall.template"
     local tmp_template_host="$(pwd)/template_host"
-    local current_user=$(whoami)
+    local current_user="$(whoami)"
     local tmp_config_script="/tmp/ocs_config_$$.sh"
     
     # Check if already installed
@@ -740,13 +917,14 @@ install_ocs_single() {
     
     # Fix filestat issue with Linux namespaces
     cd "${MOUNT_DIR}"
-    sudo rm -f ./utilbin/lx-amd64/filestat
-    sudo sh -c 'echo "#!/bin/sh" > ./utilbin/lx-amd64/filestat'
-    sudo sh -c 'echo "echo root" >> ./utilbin/lx-amd64/filestat'
-    sudo chmod +x ./utilbin/lx-amd64/filestat
+    local sys_arch="$(detect_architecture)"
+    sudo rm -f "./utilbin/${sys_arch}/filestat"
+    sudo sh -c "echo '#!/bin/sh' > ./utilbin/${sys_arch}/filestat"
+    sudo sh -c "echo 'echo root' >> ./utilbin/${sys_arch}/filestat"
+    sudo chmod +x "./utilbin/${sys_arch}/filestat"
     
     # Install qmaster and execd
-    local hostname=$(hostname)
+    local hostname="$(hostname)"
     
     # Create template_host in the current directory first, then copy to installation dir
     sed "s:docker:${hostname}:g" "$template_file" > "$tmp_template_host"
@@ -822,7 +1000,7 @@ EOL
 create_cluster_management_structure() {
     echo "Setting up cluster management structure..."
     
-    local hostname=$(hostname)
+    local hostname="$(hostname)"
     
     # Create protected directories
     sudo mkdir -p /opt/ocs/.cluster_info
@@ -830,10 +1008,10 @@ create_cluster_management_structure() {
     sudo mkdir -p /opt/ocs/.cluster_management/registration_approved
     sudo mkdir -p /opt/ocs/.cluster_management/registration_rejected
     
-    # Set secure permissions
-    sudo chmod 700 /opt/ocs/.cluster_management
+    # Set secure permissions (allow execd nodes to read approvals)
+    sudo chmod 755 /opt/ocs/.cluster_management
     sudo chmod 700 /opt/ocs/.cluster_management/registration_requests
-    sudo chmod 700 /opt/ocs/.cluster_management/registration_approved  
+    sudo chmod 755 /opt/ocs/.cluster_management/registration_approved  
     sudo chmod 700 /opt/ocs/.cluster_management/registration_rejected
     
     # Write qmaster hostname for execd discovery
@@ -842,7 +1020,7 @@ create_cluster_management_structure() {
     
     # Write cluster secret for registration validation
     if [ -n "$OCS_CLUSTER_SECRET" ]; then
-        echo "$OCS_CLUSTER_SECRET" | sudo tee /opt/ocs/.cluster_info/cluster_secret > /dev/null
+        printf '%s' "$OCS_CLUSTER_SECRET" | sudo tee /opt/ocs/.cluster_info/cluster_secret > /dev/null
         sudo chmod 600 /opt/ocs/.cluster_info/cluster_secret
     fi
     
@@ -856,14 +1034,156 @@ create_cluster_management_structure() {
     echo "PASS: Cluster management structure created"
 }
 
-# Create secure cron service for processing registration requests
+# Create background daemon for registration processing (fallback for containers)
+create_registration_daemon() {
+    echo "Creating background registration daemon..."
+    
+    # Create daemon script
+    sudo tee /opt/ocs/.cluster_management/registration_daemon.sh > /dev/null << 'EOF'
+#!/bin/sh
+# Background daemon for OCS cluster registration processing
+# Fallback when cron is not available (containers, minimal environments)
+
+DAEMON_PID_FILE="/opt/ocs/.cluster_management/registration_daemon.pid"
+DAEMON_LOG_FILE="/opt/ocs/.cluster_management/registration_daemon.log"
+PROCESS_SCRIPT="/opt/ocs/.cluster_management/process_registrations.sh"
+
+# Signal handlers for clean shutdown
+cleanup() {
+    echo "$(date): Registration daemon stopping..." >> "$DAEMON_LOG_FILE"
+    rm -f "$DAEMON_PID_FILE"
+    exit 0
+}
+
+trap 'cleanup' TERM INT
+
+# Check if already running
+if [ -f "$DAEMON_PID_FILE" ]; then
+    if kill -0 "$(cat "$DAEMON_PID_FILE")" 2>/dev/null; then
+        echo "Registration daemon already running (PID $(cat "$DAEMON_PID_FILE"))"
+        exit 0
+    else
+        rm -f "$DAEMON_PID_FILE"
+    fi
+fi
+
+# Write PID file
+echo $$ > "$DAEMON_PID_FILE"
+
+# Log startup
+echo "$(date): Registration daemon started (PID $$)" >> "$DAEMON_LOG_FILE"
+
+# Main daemon loop
+while true; do
+    # Run registration processing
+    if [ -x "$PROCESS_SCRIPT" ]; then
+        "$PROCESS_SCRIPT" >> "$DAEMON_LOG_FILE" 2>&1
+    else
+        echo "$(date): Registration processing script not found or not executable" >> "$DAEMON_LOG_FILE"
+    fi
+    
+    # Wait 60 seconds (same interval as cron)
+    sleep 60
+done
+EOF
+    
+    sudo chmod +x /opt/ocs/.cluster_management/registration_daemon.sh
+    
+    # Start daemon in background
+    echo "Starting registration daemon..."
+    if (cd /opt/ocs/.cluster_management && sudo nohup ./registration_daemon.sh >/dev/null 2>&1 &); then
+        sleep 2  # Give daemon time to start
+        if [ -f "/opt/ocs/.cluster_management/registration_daemon.pid" ]; then
+            echo "PASS: Registration daemon started (PID $(cat /opt/ocs/.cluster_management/registration_daemon.pid))"
+            return 0
+        else
+            echo "WARNING: Registration daemon may have failed to start"
+            return 1
+        fi
+    else
+        echo "WARNING: Failed to start registration daemon"
+        return 1
+    fi
+}
+
+# Attempt to install and start cron service
+ensure_cron_service() {
+    echo "Checking cron service availability..."
+    
+    # Check if cron is already running
+    if pgrep -x cron >/dev/null 2>&1 || pgrep -x crond >/dev/null 2>&1; then
+        echo "PASS: Cron daemon already running"
+        return 0
+    fi
+    
+    # Try to install cron if missing
+    if ! command -v crontab >/dev/null 2>&1; then
+        echo "Attempting to install cron package..."
+        if command -v zypper >/dev/null 2>&1; then
+            sudo zypper install -y cron >/dev/null 2>&1 || true
+        elif command -v yum >/dev/null 2>&1; then
+            sudo yum install -y crontabs >/dev/null 2>&1 || true
+        elif command -v dnf >/dev/null 2>&1; then
+            sudo dnf install -y crontabs >/dev/null 2>&1 || true
+        elif command -v apt-get >/dev/null 2>&1; then
+            sudo apt-get update >/dev/null 2>&1 && sudo apt-get install -y cron >/dev/null 2>&1 || true
+        fi
+    fi
+    
+    # Try multiple methods to start cron daemon
+    echo "Attempting to start cron daemon..."
+    
+    # Method 1: systemctl (modern systems)
+    if command -v systemctl >/dev/null 2>&1; then
+        if sudo systemctl start cron >/dev/null 2>&1 || sudo systemctl start crond >/dev/null 2>&1; then
+            echo "PASS: Cron daemon started via systemctl"
+            return 0
+        fi
+    fi
+    
+    # Method 2: service command (older systems)
+    if command -v service >/dev/null 2>&1; then
+        if sudo service cron start >/dev/null 2>&1 || sudo service crond start >/dev/null 2>&1; then
+            echo "PASS: Cron daemon started via service"
+            return 0
+        fi
+    fi
+    
+    # Method 3: Direct execution (containers/minimal environments)
+    if command -v crond >/dev/null 2>&1; then
+        if sudo crond >/dev/null 2>&1; then
+            echo "PASS: Cron daemon started directly"
+            return 0
+        fi
+    elif command -v cron >/dev/null 2>&1; then
+        if sudo cron >/dev/null 2>&1; then
+            echo "PASS: Cron daemon started directly"
+            return 0
+        fi
+    fi
+    
+    echo "WARNING: Could not start cron daemon"
+    return 1
+}
+
+# Create secure service for processing registration requests (cron or daemon)
 create_registration_cron_service() {
-    echo "Installing registration processing cron service..."
+    echo "Installing registration processing service..."
     
     # Create the registration processing script
     sudo tee /opt/ocs/.cluster_management/process_registrations.sh > /dev/null << 'EOF'
 #!/bin/sh
 # Secure registration processing service for OCS cluster
+source /opt/ocs/default/common/settings.sh
+
+# Portable logging function
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') $1" >> /opt/ocs/.cluster_management/registration.log
+    # Also try logger if available, but don't fail if it's not
+    if command -v logger >/dev/null 2>&1; then
+        logger "$1"
+    fi
+}
 
 LOCK_FILE="/opt/ocs/.cluster_management/master_cron.lock"
 REQUEST_DIR="/opt/ocs/.cluster_management/registration_requests"
@@ -882,23 +1202,23 @@ if [ -f "/opt/ocs/default/common/settings.sh" ]; then
     . /opt/ocs/default/common/settings.sh
 fi
 
-# Read cluster secret for validation
-if [ -f "$CLUSTER_SECRET_FILE" ]; then
-    CLUSTER_SECRET=$(cat "$CLUSTER_SECRET_FILE")
-else
-    logger "OCS Registration: No cluster secret found, cannot validate requests"
-    exit 1
-fi
+    # Read cluster secret for validation
+    if [ -f "$CLUSTER_SECRET_FILE" ]; then
+        CLUSTER_SECRET=$(cat "$CLUSTER_SECRET_FILE" | tr -d '\n\r')
+    else
+        log_message "OCS Registration: No cluster secret found, cannot validate requests"
+        exit 1
+    fi
 
 # Validate registration request signature
 validate_request() {
     local request_file="$1"
     
-    # Extract components
-    local message=$(grep "^MESSAGE=" "$request_file" | cut -d'=' -f2-)
-    local signature=$(grep "^SIGNATURE=" "$request_file" | cut -d'=' -f2)
-    local hostname=$(grep "^HOSTNAME=" "$request_file" | cut -d'=' -f2)
-    local timestamp=$(grep "^TIMESTAMP=" "$request_file" | cut -d'=' -f2)
+    # Extract components and strip whitespace
+    local message=$(grep "^MESSAGE=" "$request_file" | cut -d'=' -f2- | tr -d '\n\r')
+    local signature=$(grep "^SIGNATURE=" "$request_file" | cut -d'=' -f2- | tr -d '\n\r')
+    local hostname=$(grep "^HOSTNAME=" "$request_file" | cut -d'=' -f2 | tr -d '\n\r')
+    local timestamp=$(grep "^TIMESTAMP=" "$request_file" | cut -d'=' -f2 | tr -d '\n\r')
     
     # Basic validation
     if [ -z "$message" ] || [ -z "$signature" ] || [ -z "$hostname" ] || [ -z "$timestamp" ]; then
@@ -924,7 +1244,8 @@ validate_request() {
     if [ "$signature" = "$expected_signature" ]; then
         return 0
     else
-        echo "Invalid signature"
+        # Debug information for signature mismatch
+        echo "Invalid signature. Expected: $expected_signature, Got: $signature, Message: $message"
         return 1
     fi
 }
@@ -940,7 +1261,7 @@ for request_file in "$REQUEST_DIR"/*; do
     validation_result=$(validate_request "$request_file")
     if [ $? -ne 0 ]; then
         echo "$validation_result" > "$REJECTED_DIR/$hostname"
-        logger "OCS Registration: Request from $hostname rejected - $validation_result"
+        log_message "OCS Registration: Request from $hostname rejected - $validation_result"
         rm -f "$request_file"
         continue
     fi
@@ -948,11 +1269,13 @@ for request_file in "$REQUEST_DIR"/*; do
     # Attempt to register admin host
     if qconf -ah "$hostname" 2>/dev/null; then
         echo "Registered successfully at $(date)" > "$APPROVED_DIR/$hostname"
-        logger "OCS Registration: Admin host $hostname registered successfully"
+        chmod 644 "$APPROVED_DIR/$hostname"
+        log_message "OCS Registration: Admin host $hostname registered successfully"
     else
         error_msg=$(qconf -ah "$hostname" 2>&1)
         echo "Registration failed: $error_msg" > "$REJECTED_DIR/$hostname"
-        logger "OCS Registration: Admin host $hostname registration failed - $error_msg"
+        chmod 644 "$REJECTED_DIR/$hostname"
+        log_message "OCS Registration: Admin host $hostname registration failed - $error_msg"
     fi
     
     # Clean up request
@@ -963,10 +1286,80 @@ EOF
     # Make script executable
     sudo chmod +x /opt/ocs/.cluster_management/process_registrations.sh
     
-    # Add to crontab (every minute)
-    (sudo crontab -l 2>/dev/null | grep -v "process_registrations.sh"; echo "* * * * * /opt/ocs/.cluster_management/process_registrations.sh") | sudo crontab -
+    # Setup automatic registration processing
+    echo "Setting up periodic registration processing..."
     
-    echo "PASS: Registration processing cron service installed"
+    # Debug: Show cron status and ensure cron is running
+    echo "DEBUG: Checking cron availability..."
+    if command -v crontab >/dev/null 2>&1; then
+        echo "DEBUG: crontab command available"
+    else
+        echo "DEBUG: crontab command NOT available"
+    fi
+    
+    if pgrep -x cron >/dev/null 2>&1; then
+        echo "DEBUG: cron process running"
+    elif pgrep -x crond >/dev/null 2>&1; then
+        echo "DEBUG: crond process running"
+    else
+        echo "DEBUG: No cron processes detected - attempting to start cron..."
+        # Try to start cron proactively
+        if command -v cron >/dev/null 2>&1; then
+            sudo cron >/dev/null 2>&1 && echo "DEBUG: Started cron daemon" || echo "DEBUG: Failed to start cron"
+        elif command -v crond >/dev/null 2>&1; then
+            sudo crond >/dev/null 2>&1 && echo "DEBUG: Started crond daemon" || echo "DEBUG: Failed to start crond"
+        fi
+    fi
+    
+    # Try cron first - simple and direct approach
+    if command -v crontab >/dev/null 2>&1 && (pgrep -x cron >/dev/null 2>&1 || pgrep -x crond >/dev/null 2>&1); then
+        echo "Installing cron job for registration processing..."
+        if (sudo crontab -l 2>/dev/null | grep -v "process_registrations.sh"; echo "* * * * * /opt/ocs/.cluster_management/process_registrations.sh") | sudo crontab -; then
+            echo "PASS: Registration processing via crontab (every minute)"
+            # Verify installation
+            if sudo crontab -l | grep -q "process_registrations.sh"; then
+                echo "VERIFIED: Cron job successfully installed"
+                return 0
+            else
+                echo "WARNING: Cron job installation may have failed, trying fallback..."
+            fi
+        else
+            echo "WARNING: Failed to install cron job, trying alternative methods..."
+        fi
+    fi
+    
+    # If cron not available, ensure it's started and try again  
+    echo "Cron not ready, attempting to start cron service..."
+    if ensure_cron_service; then
+        if command -v crontab >/dev/null 2>&1; then
+            echo "Retry: Installing cron job after starting cron service..."
+            if (sudo crontab -l 2>/dev/null | grep -v "process_registrations.sh"; echo "* * * * * /opt/ocs/.cluster_management/process_registrations.sh") | sudo crontab -; then
+                echo "PASS: Registration processing via crontab (every minute)"
+                # Verify installation
+                if sudo crontab -l | grep -q "process_registrations.sh"; then
+                    echo "VERIFIED: Cron job successfully installed on retry"
+                    return 0
+                else
+                    echo "WARNING: Cron job installation failed on retry"
+                fi
+            else
+                echo "WARNING: Failed to install cron job on retry"
+            fi
+        fi
+    fi
+    
+    # Fallback to background daemon
+    echo "Cron unavailable, setting up background daemon..."
+    if create_registration_daemon; then
+        echo "PASS: Registration processing via background daemon"
+        return 0
+    fi
+    
+    # Final fallback - graceful degradation
+    echo "WARNING: Could not set up automatic registration processing"
+    echo "Cluster node registration will require manual intervention using:"
+    echo "  sudo /opt/ocs/.cluster_management/process_registrations.sh"
+    return 1
 }
 
 # Install Open Cluster Scheduler execd only using shared filesystem
@@ -976,7 +1369,7 @@ install_execd_only() {
     export LD_LIBRARY_PATH=""
     local template_file="$(pwd)/autoinstall.template"
     local tmp_template_host="$(pwd)/template_host"
-    local current_user=$(whoami)
+    local current_user="$(whoami)"
     
     # Wait for master installation to complete
     wait_for_master_installation
@@ -991,7 +1384,47 @@ install_execd_only() {
         exit 1
     fi
     
-    echo "Using OCS installation from shared filesystem"
+    # Check if the correct architecture binaries are available
+    local execd_arch="$(detect_architecture)"
+    echo "Execd architecture detected: $execd_arch"
+    
+    # Check what architecture is installed in the shared filesystem
+    local installed_archs=""
+    for arch_dir in "${MOUNT_DIR}/bin/"*; do
+        if [ -d "$arch_dir" ]; then
+            local arch_name="$(basename "$arch_dir")"
+            installed_archs="$installed_archs $arch_name"
+        fi
+    done
+    
+    echo "Available architectures in shared filesystem:$installed_archs"
+    
+    # Check if our architecture is available
+    if [ -d "${MOUNT_DIR}/bin/${execd_arch}" ]; then
+        echo "Compatible binaries found for $execd_arch, using shared filesystem installation"
+    else
+        echo "WARNING: No $execd_arch binaries found in shared filesystem"
+        echo "Available architectures:$installed_archs"
+        echo "Downloading $execd_arch binaries for this execd node..."
+        
+        # Download architecture-specific binaries for this execd
+        if ! download_execd_binaries "$execd_arch"; then
+            # If primary architecture fails and we're on CentOS 7, try lx-amd64 fallback
+            if [ "$execd_arch" = "ulx-amd64" ]; then
+                echo "WARNING: $execd_arch download failed, trying lx-amd64 fallback for compatibility..."
+                if download_execd_binaries "lx-amd64"; then
+                    echo "Successfully fell back to lx-amd64 binaries"
+                    execd_arch="lx-amd64"  # Update architecture for subsequent operations
+                else
+                    echo "ERROR: Both $execd_arch and lx-amd64 fallback failed"
+                    exit 1
+                fi
+            else
+                echo "ERROR: Failed to download $execd_arch binaries and no fallback available"
+                exit 1
+            fi
+        fi
+    fi
     
     # Check if execd is already configured on this host
     if [ -f "${MOUNT_DIR}/default/spool/execd/$(hostname)/active_jobs" ] || \
@@ -1013,13 +1446,14 @@ install_execd_only() {
     cp "$template_file" .
     
     # Install execd only (no qmaster, no file downloads needed)
-    local hostname=$(hostname)
+    local hostname="$(hostname)"
+    local unique_template="template_host_${hostname}_$$"
     
-    # Create template_host
-    sed "s:docker:${hostname}:g" autoinstall.template > template_host
+    # Create unique template_host to avoid conflicts with parallel execd installations
+    sed "s:docker:${hostname}:g" autoinstall.template > "$unique_template"
     
-    # Copy template to installation directory
-    sudo cp template_host "${MOUNT_DIR}/template_host"
+    # Copy template to installation directory with unique name
+    sudo cp "$unique_template" "${MOUNT_DIR}/$unique_template"
     
     # Change to installation directory
     cd "${MOUNT_DIR}"
@@ -1030,7 +1464,7 @@ install_execd_only() {
     
     # Run execd installation (no -m flag for qmaster)
     echo "Running OCS execd installation..."
-    sudo ./inst_sge -x -auto ./template_host
+    sudo ./inst_sge -x -auto ./"$unique_template"
     
     # Configure environment (skip qmaster-specific configuration)
     if [ -f "${MOUNT_DIR}/default/common/settings.sh" ]; then
@@ -1050,7 +1484,7 @@ install_execd_only() {
     # Clean up temporary files
     cd /
     rm -rf "$work_dir"
-    sudo rm -f "${MOUNT_DIR}/template_host"
+    sudo rm -f "${MOUNT_DIR}/$unique_template"
     
     echo "Open Cluster Scheduler $OCS_VERSION execd installation completed successfully!"
     echo "Execd has been configured to connect to qmaster: $QMASTER_HOSTNAME"
@@ -1093,6 +1527,12 @@ main() {
             
             # For full installation, generate cluster secret if not provided
             if [ -z "$OCS_CLUSTER_SECRET" ]; then
+                # Check if openssl is available for key generation
+                if ! command -v openssl >/dev/null 2>&1; then
+                    echo "ERROR: openssl command not found, required for cluster secret generation"
+                    echo "Please install openssl package or provide OCS_CLUSTER_SECRET manually"
+                    exit 1
+                fi
                 echo "Generating cluster secret for secure execd registration..."
                 OCS_CLUSTER_SECRET=$(openssl rand -hex 32)
                 echo "Generated cluster secret: $OCS_CLUSTER_SECRET"
@@ -1115,8 +1555,9 @@ main() {
             ;;
         "execd")
             echo "Performing execd-only installation using shared filesystem..."
-            validate_execd_prerequisites
+            validate_execd_basic_prerequisites
             install_packages
+            validate_execd_advanced_prerequisites
             create_execd_template
             install_execd_only
             ;;

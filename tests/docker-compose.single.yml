@@ -1,0 +1,136 @@
+#___INFO__MARK_BEGIN_NEW__
+###########################################################################
+#
+#  Copyright 2025 HPC-Gridware GmbH
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+###########################################################################
+#___INFO__MARK_END_NEW__
+
+services:
+  # ==================== SINGLE NODE TESTS ====================
+  rocky96-single:
+    build:
+      context: .
+      dockerfile: rocky9.6/Dockerfile
+    container_name: ocs-test-rocky96-single
+    hostname: rocky96-single
+    environment:
+      - OCS_VERSION=${OCS_VERSION:-9.0.6}
+      - OCS_INSTALL_MODE=single
+      - TEST_TYPE=single
+    volumes:
+      - ../ocs.sh:/opt/ocs.sh:ro
+      - ./common:/opt/test-scripts:ro
+      - ./reports:/opt/reports
+    networks:
+      - ocs-test
+    privileged: true
+
+  ubuntu2204-single:
+    build:
+      context: .
+      dockerfile: ubuntu22.04/Dockerfile
+    container_name: ocs-test-ubuntu2204-single
+    hostname: ubuntu2204-single
+    environment:
+      - OCS_VERSION=${OCS_VERSION:-9.0.6}
+      - OCS_INSTALL_MODE=single
+      - TEST_TYPE=single
+    volumes:
+      - ../ocs.sh:/opt/ocs.sh:ro
+      - ./common:/opt/test-scripts:ro
+      - ./reports:/opt/reports
+    networks:
+      - ocs-test
+    privileged: true
+
+  ubuntu2404-single:
+    build:
+      context: .
+      dockerfile: ubuntu24.04/Dockerfile
+    container_name: ocs-test-ubuntu2404-single
+    hostname: ubuntu2404-single
+    environment:
+      - OCS_VERSION=${OCS_VERSION:-9.0.6}
+      - OCS_INSTALL_MODE=single
+      - TEST_TYPE=single
+    volumes:
+      - ../ocs.sh:/opt/ocs.sh:ro
+      - ./common:/opt/test-scripts:ro
+      - ./reports:/opt/reports
+    networks:
+      - ocs-test
+    privileged: true
+
+  opensuse155-single:
+    build:
+      context: .
+      dockerfile: opensuse-leap15.5/Dockerfile
+    container_name: ocs-test-opensuse155-single
+    hostname: opensuse155-single
+    environment:
+      - OCS_VERSION=${OCS_VERSION:-9.0.6}
+      - OCS_INSTALL_MODE=single
+      - TEST_TYPE=single
+    volumes:
+      - ../ocs.sh:/opt/ocs.sh:ro
+      - ./common:/opt/test-scripts:ro
+      - ./reports:/opt/reports
+    networks:
+      - ocs-test
+    privileged: true
+
+  opensuse156-single:
+    build:
+      context: .
+      dockerfile: opensuse-leap15.6/Dockerfile
+    container_name: ocs-test-opensuse156-single
+    hostname: opensuse156-single
+    environment:
+      - OCS_VERSION=${OCS_VERSION:-9.0.6}
+      - OCS_INSTALL_MODE=single
+      - TEST_TYPE=single
+    volumes:
+      - ../ocs.sh:/opt/ocs.sh:ro
+      - ./common:/opt/test-scripts:ro
+      - ./reports:/opt/reports
+    networks:
+      - ocs-test
+    privileged: true
+
+  centos7-single:
+    build:
+      context: .
+      dockerfile: centos7/Dockerfile
+    container_name: ocs-test-centos7-single
+    hostname: centos7-single
+    environment:
+      - OCS_VERSION=${OCS_VERSION:-9.0.6}
+      - OCS_INSTALL_MODE=single
+      - TEST_TYPE=single
+    volumes:
+      - ../ocs.sh:/opt/ocs.sh:ro
+      - ./common:/opt/test-scripts:ro
+      - ./reports:/opt/reports
+    networks:
+      - ocs-test
+    privileged: true
+
+networks:
+  ocs-test:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

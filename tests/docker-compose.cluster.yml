@@ -1,0 +1,98 @@
+#___INFO__MARK_BEGIN_NEW__
+###########################################################################
+#
+#  Copyright 2025 HPC-Gridware GmbH
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+###########################################################################
+#___INFO__MARK_END_NEW__
+
+services:
+  # ==================== CLUSTER TESTS ====================
+  # Master node (openSUSE Leap 15.6)
+  opensuse156-master:
+    build:
+      context: .
+      dockerfile: opensuse-leap15.6/Dockerfile
+    container_name: ocs-test-opensuse156-master
+    hostname: opensuse156-master
+    environment:
+      - OCS_VERSION=${OCS_VERSION:-9.0.6}
+      - OCS_INSTALL_MODE=full
+      - OCS_CLUSTER_SECRET=${OCS_CLUSTER_SECRET:-a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd}
+      - TEST_TYPE=master
+    volumes:
+      - ../ocs.sh:/opt/ocs.sh:ro
+      - ./common:/opt/test-scripts:ro
+      - ./reports:/opt/reports
+      - ocs-shared:/opt/ocs
+    networks:
+      - ocs-test
+    privileged: true
+
+  # Execd nodes from different distributions
+  opensuse155-execd:
+    build:
+      context: .
+      dockerfile: opensuse-leap15.5/Dockerfile
+    container_name: ocs-test-opensuse155-execd
+    hostname: opensuse155-execd
+    environment:
+      - OCS_VERSION=${OCS_VERSION:-9.0.6}
+      - OCS_INSTALL_MODE=execd
+      - OCS_CLUSTER_SECRET=${OCS_CLUSTER_SECRET:-a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd}
+      - TEST_TYPE=execd
+    volumes:
+      - ../ocs.sh:/opt/ocs.sh:ro
+      - ./common:/opt/test-scripts:ro
+      - ./reports:/opt/reports
+      - ocs-shared:/opt/ocs
+    networks:
+      - ocs-test
+    depends_on:
+      - opensuse156-master
+    privileged: true
+
+  centos7-execd:
+    build:
+      context: .
+      dockerfile: centos7/Dockerfile
+    container_name: ocs-test-centos7-execd
+    hostname: centos7-execd
+    environment:
+      - OCS_VERSION=${OCS_VERSION:-9.0.6}
+      - OCS_INSTALL_MODE=execd
+      - OCS_CLUSTER_SECRET=${OCS_CLUSTER_SECRET:-a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd}
+      - TEST_TYPE=execd
+    volumes:
+      - ../ocs.sh:/opt/ocs.sh:ro
+      - ./common:/opt/test-scripts:ro
+      - ./reports:/opt/reports
+      - ocs-shared:/opt/ocs
+    networks:
+      - ocs-test
+    depends_on:
+      - opensuse156-master
+    privileged: true
+
+volumes:
+  ocs-shared:
+    driver: local
+
+networks:
+  ocs-test:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

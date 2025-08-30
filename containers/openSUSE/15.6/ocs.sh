@@ -258,11 +258,11 @@ install_packages() {
           # Register Development Tools module
           sudo SUSEConnect -p sle-module-development-tools/${VERSION_ID}/x86_64 || \
             sudo SUSEConnect -p sle-module-development-tools/15/x86_64
-          packages="git-core tar binutils sudo make wget bash screen libtirpc3 libtirpc-devel which"
+          packages="git-core tar binutils sudo make wget bash screen libtirpc3 libtirpc-devel"
         elif [ "$DISTID" = "opensuse-leap" ]; then
           echo "Detected openSUSE Leap $DISTVERSION"
           # On openSUSE, package names are as expected
-          packages="git tar binutils sudo make wget bash screen libtirpc3 libtirpc-devel which"
+          packages="git tar binutils sudo make wget bash screen libtirpc3 libtirpc-devel"
         else
           echo "WARNING: Unknown SUSE variant; attempting with default package names."
         fi
@@ -424,7 +424,7 @@ install_ocs() {
     
     # Fix filestat issue with Linux namespaces
     cd "${MOUNT_DIR}"
-    local sys_arch=$(./util/arch)
+    local sys_arch=$(detect_architecture)
     sudo rm -f ./utilbin/${sys_arch}/filestat
     sudo sh -c "echo '#!/bin/sh' > ./utilbin/${sys_arch}/filestat"
     sudo sh -c "echo 'echo root' >> ./utilbin/${sys_arch}/filestat"

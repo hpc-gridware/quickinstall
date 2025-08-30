@@ -12,7 +12,7 @@ set -e  # Exit on error
 #set -u  # Treat unset variables as errors
 
 # Default version - can be overridden by environment variable
-OCS_VERSION="${OCS_VERSION:-9.0.7}"
+OCS_VERSION="${OCS_VERSION:-9.0.8}"
 
 echo "Starting Open Cluster Scheduler installation (version: $OCS_VERSION)..."
 
@@ -64,7 +64,6 @@ get_download_urls() {
             esac
             ;;
         "9.0.7")
-            # Placeholder for future version - update URLs when available
             case "$arch" in
                 "lx-amd64")
                     echo "https://www.hpc-gridware.com/download/10802/?tmstv=1751900704"
@@ -86,9 +85,31 @@ get_download_urls() {
                     ;;
             esac
             ;;
+        "9.0.8")
+            case "$arch" in
+                "lx-amd64")
+                    echo "https://www.hpc-gridware.com/download/11126/?tmstv=1756559953"
+                    ;;
+                "lx-arm64")
+                    echo "https://www.hpc-gridware.com/download/11128/?tmstv=1756559954"
+                    ;;
+                "ulx-amd64")
+                    echo "https://www.hpc-gridware.com/download/11132/?tmstv=1756559954"
+                    ;;
+                "doc")
+                    echo "https://www.hpc-gridware.com/download/11140/?tmstv=1756559954"
+                    ;;
+                "common")
+                    echo "https://www.hpc-gridware.com/download/11138/?tmstv=1756559954"
+                    ;;
+                *)
+                    echo ""
+                    ;;
+            esac
+            ;;
         *)
             echo "ERROR: Unsupported OCS version: $version" >&2
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7" >&2
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8" >&2
             exit 1
             ;;
     esac
@@ -490,17 +511,12 @@ main() {
     
     # Validate version before proceeding
     case "$OCS_VERSION" in
-        "9.0.5"|"9.0.6"|"9.0.7")
+        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8")
             # Supported versions
-            ;;
-        "9.0.8")
-            echo "WARNING: Version 9.0.8 URLs are not yet available."
-            echo "Please update the script with actual URLs when they become available."
-            exit 1
             ;;
         *)
             echo "ERROR: Unsupported version: $OCS_VERSION"
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7"
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8"
             echo "Usage: OCS_VERSION=9.0.6 $0"
             exit 1
             ;;

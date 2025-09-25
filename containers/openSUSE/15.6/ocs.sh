@@ -6,6 +6,7 @@
 # Usage:
 #   curl -s <script_url> | sh                    # Installs default version
 #   curl -s <script_url> | OCS_VERSION=9.0.6 sh  # Installs specific version
+#   OCS_PACKAGE_DIR=/path/to/packages ./ocs.sh   # Uses pre-downloaded packages
 #
 
 set -e  # Exit on error
@@ -25,16 +26,16 @@ get_download_urls() {
         "9.0.5")
             case "$arch" in
                 "lx-amd64")
-                    echo "https://www.hpc-gridware.com/download/10529/?tmstv=1745334305"
+                    echo "https://hpc-gridware.com/download/10529/?tmstv=1745334305"
                     ;;
                 "ulx-amd64")
-                    echo "https://www.hpc-gridware.com/download/10535/?tmstv=1745334305"
+                    echo "https://hpc-gridware.com/download/10535/?tmstv=1745334305"
                     ;;
                 "doc")
-                    echo "https://www.hpc-gridware.com/download/10543/?tmstv=1745334305"
+                    echo "https://hpc-gridware.com/download/10543/?tmstv=1745334305"
                     ;;
                 "common")
-                    echo "https://www.hpc-gridware.com/download/10541/?tmstv=1745334305"
+                    echo "https://hpc-gridware.com/download/10541/?tmstv=1745334305"
                     ;;
                 *)
                     echo ""
@@ -44,19 +45,19 @@ get_download_urls() {
         "9.0.6")
             case "$arch" in
                 "lx-amd64")
-                    echo "https://www.hpc-gridware.com/download/10646/?tmstv=1749092703"
+                    echo "https://hpc-gridware.com/download/10646/?tmstv=1749092703"
                     ;;
                 "lx-arm64")
-                    echo "https://www.hpc-gridware.com/download/10648/?tmstv=1749092703"
+                    echo "https://hpc-gridware.com/download/10648/?tmstv=1749092703"
                     ;;
                 "ulx-amd64")
-                    echo "https://www.hpc-gridware.com/download/10652/?tmstv=1749092703"
+                    echo "https://hpc-gridware.com/download/10652/?tmstv=1749092703"
                     ;;
                 "doc")
-                    echo "https://www.hpc-gridware.com/download/10656/?tmstv=1749092703"
+                    echo "https://hpc-gridware.com/download/10656/?tmstv=1749092703"
                     ;;
                 "common")
-                    echo "https://www.hpc-gridware.com/download/10654/?tmstv=1749092703"
+                    echo "https://hpc-gridware.com/download/10654/?tmstv=1749092703"
                     ;;
                 *)
                     echo ""
@@ -66,19 +67,19 @@ get_download_urls() {
         "9.0.7")
             case "$arch" in
                 "lx-amd64")
-                    echo "https://www.hpc-gridware.com/download/10802/?tmstv=1751900704"
+                    echo "https://hpc-gridware.com/download/10802/?tmstv=1751900704"
                     ;;
                 "lx-arm64")
-                    echo "https://www.hpc-gridware.com/download/10804/?tmstv=1751900704"
+                    echo "https://hpc-gridware.com/download/10804/?tmstv=1751900704"
                     ;;
                 "ulx-amd64")
-                    echo "https://www.hpc-gridware.com/download/10808/?tmstv=1751900704"
+                    echo "https://hpc-gridware.com/download/10808/?tmstv=1751900704"
                     ;;
                 "doc")
-                    echo "https://www.hpc-gridware.com/download/10818/?tmstv=1751900704"
+                    echo "https://hpc-gridware.com/download/10818/?tmstv=1751900704"
                     ;;
                 "common")
-                    echo "https://www.hpc-gridware.com/download/10816/?tmstv=1751900704"
+                    echo "https://hpc-gridware.com/download/10816/?tmstv=1751900704"
                     ;;
                 *)
                     echo ""
@@ -88,19 +89,19 @@ get_download_urls() {
         "9.0.8")
             case "$arch" in
                 "lx-amd64")
-                    echo "https://www.hpc-gridware.com/download/11126/?tmstv=1756559953"
+                    echo "https://hpc-gridware.com/download/11126/?tmstv=1756559953"
                     ;;
                 "lx-arm64")
-                    echo "https://www.hpc-gridware.com/download/11128/?tmstv=1756559954"
+                    echo "https://hpc-gridware.com/download/11128/?tmstv=1756559954"
                     ;;
                 "ulx-amd64")
-                    echo "https://www.hpc-gridware.com/download/11132/?tmstv=1756559954"
+                    echo "https://hpc-gridware.com/download/11132/?tmstv=1756559954"
                     ;;
                 "doc")
-                    echo "https://www.hpc-gridware.com/download/11140/?tmstv=1756559954"
+                    echo "https://hpc-gridware.com/download/11140/?tmstv=1756559954"
                     ;;
                 "common")
-                    echo "https://www.hpc-gridware.com/download/11138/?tmstv=1756559954"
+                    echo "https://hpc-gridware.com/download/11138/?tmstv=1756559954"
                     ;;
                 *)
                     echo ""
@@ -113,6 +114,114 @@ get_download_urls() {
             exit 1
             ;;
     esac
+}
+
+# Function to check for pre-downloaded packages in specified directory
+check_predownloaded_packages() {
+    local package_dir="$1"
+    local version="$2"
+    local sys_arch="$3"
+    
+    if [ ! -d "$package_dir" ]; then
+        echo "ERROR: Specified package directory does not exist: $package_dir" >&2
+        exit 1
+    fi
+    
+    # Check for required packages with both ocs and gcs prefixes
+    local binary_found=0
+    local common_found=0
+    local doc_found=0
+    
+    # Check binary package (architecture specific)
+    for prefix in "ocs" "gcs"; do
+        local binary_file="${prefix}-${version}-bin-${sys_arch}.tar.gz"
+        if [ -f "${package_dir}/${binary_file}" ]; then
+            echo "Found binary package: $binary_file"
+            binary_found=1
+            break
+        fi
+    done
+    
+    # Check common package
+    for prefix in "ocs" "gcs"; do
+        local common_file="${prefix}-${version}-common.tar.gz"
+        if [ -f "${package_dir}/${common_file}" ]; then
+            echo "Found common package: $common_file"
+            common_found=1
+            break
+        fi
+    done
+    
+    # Check doc package
+    for prefix in "ocs" "gcs"; do
+        local doc_file="${prefix}-${version}-doc.tar.gz"
+        if [ -f "${package_dir}/${doc_file}" ]; then
+            echo "Found doc package: $doc_file"
+            doc_found=1
+            break
+        fi
+    done
+    
+    # Verify all required packages are present
+    if [ $binary_found -eq 0 ]; then
+        echo "ERROR: Binary package not found for architecture $sys_arch in $package_dir" >&2
+        echo "Expected: ocs-${version}-bin-${sys_arch}.tar.gz or gcs-${version}-bin-${sys_arch}.tar.gz" >&2
+        exit 1
+    fi
+    
+    if [ $common_found -eq 0 ]; then
+        echo "ERROR: Common package not found in $package_dir" >&2
+        echo "Expected: ocs-${version}-common.tar.gz or gcs-${version}-common.tar.gz" >&2
+        exit 1
+    fi
+    
+    if [ $doc_found -eq 0 ]; then
+        echo "ERROR: Doc package not found in $package_dir" >&2
+        echo "Expected: ocs-${version}-doc.tar.gz or gcs-${version}-doc.tar.gz" >&2
+        exit 1
+    fi
+    
+    echo "All required packages found in $package_dir"
+}
+
+# Function to copy pre-downloaded packages to download directory
+copy_predownloaded_files() {
+    local package_dir="$1"
+    local version="$2"
+    local sys_arch="$3"
+    local download_dir="$4"
+    
+    echo "Using pre-downloaded packages from: $package_dir"
+    
+    # Copy binary package
+    for prefix in "ocs" "gcs"; do
+        local binary_file="${prefix}-${version}-bin-${sys_arch}.tar.gz"
+        if [ -f "${package_dir}/${binary_file}" ]; then
+            echo "  Copying $binary_file..."
+            cp "${package_dir}/${binary_file}" "$download_dir/"
+            break
+        fi
+    done
+    
+    # Copy common package
+    for prefix in "ocs" "gcs"; do
+        local common_file="${prefix}-${version}-common.tar.gz"
+        if [ -f "${package_dir}/${common_file}" ]; then
+            echo "  Copying $common_file..."
+            cp "${package_dir}/${common_file}" "$download_dir/"
+            break
+        fi
+    done
+    
+    # Copy doc package
+    for prefix in "ocs" "gcs"; do
+        local doc_file="${prefix}-${version}-doc.tar.gz"
+        if [ -f "${package_dir}/${doc_file}" ]; then
+            echo "  Copying $doc_file..."
+            cp "${package_dir}/${doc_file}" "$download_dir/"
+            break
+        fi
+    done
 }
 
 # Function to detect system architecture
@@ -258,11 +367,11 @@ install_packages() {
           # Register Development Tools module
           sudo SUSEConnect -p sle-module-development-tools/${VERSION_ID}/x86_64 || \
             sudo SUSEConnect -p sle-module-development-tools/15/x86_64
-          packages="git-core tar binutils sudo make wget bash screen libtirpc3 libtirpc-devel"
+          packages="git-core tar binutils sudo make wget bash screen libtirpc3 libtirpc-devel which"
         elif [ "$DISTID" = "opensuse-leap" ]; then
           echo "Detected openSUSE Leap $DISTVERSION"
           # On openSUSE, package names are as expected
-          packages="git tar binutils sudo make wget bash screen libtirpc3 libtirpc-devel"
+          packages="git tar binutils sudo make wget bash screen libtirpc3 libtirpc-devel which"
         else
           echo "WARNING: Unknown SUSE variant; attempting with default package names."
         fi
@@ -295,7 +404,7 @@ setup_directories() {
 
 # Download installation files
 download_files() {
-    echo "Downloading Open Cluster Scheduler $OCS_VERSION files..."
+    echo "Preparing Open Cluster Scheduler $OCS_VERSION files..."
     
     # Detect system architecture
     local sys_arch=$(detect_architecture)
@@ -309,40 +418,23 @@ download_files() {
     rm -rf "$download_dir"
     mkdir -p "$download_dir"
     
-    cd "$download_dir"
-    
-    # Download architecture-specific binary package
-    local bin_url=$(get_download_urls "$OCS_VERSION" "$sys_arch")
-    if [ -n "$bin_url" ] && [ "$bin_url" != "https://www.hpc-gridware.com/download/XXXXX/?tmstv=XXXXXXXXXX" ]; then
-        echo "Downloading $sys_arch binary package..."
-        wget -q --show-progress -k --content-disposition "$bin_url"
+    # Check if OCS_PACKAGE_DIR is set for pre-downloaded packages
+    if [ -n "${OCS_PACKAGE_DIR:-}" ]; then
+        echo "OCS_PACKAGE_DIR is set: $OCS_PACKAGE_DIR"
+        check_predownloaded_packages "$OCS_PACKAGE_DIR" "$OCS_VERSION" "$sys_arch"
+        copy_predownloaded_files "$OCS_PACKAGE_DIR" "$OCS_VERSION" "$sys_arch" "$download_dir"
+        echo "Pre-downloaded packages copied successfully"
     else
-        echo "ERROR: No valid URL for $sys_arch binary package for version $OCS_VERSION"
-        exit 1
+        echo "Downloading Open Cluster Scheduler $OCS_VERSION files..."
+        cd "$download_dir"
+        download_from_web "$OCS_VERSION" "$sys_arch"
+        cd ..
     fi
     
-    # For ARM64 systems with version 9.0.6+, also check if lx-arm64 is available
-    if [ "$sys_arch" = "lx-amd64" ] && [ "$OCS_VERSION" != "9.0.5" ]; then
-        local arm64_url=$(get_download_urls "$OCS_VERSION" "lx-arm64")
-        if [ -n "$arm64_url" ] && [ "$arm64_url" != "https://www.hpc-gridware.com/download/XXXXX/?tmstv=XXXXXXXXXX" ]; then
-            echo "Note: ARM64 binary is also available for this version"
-        fi
-    fi
-    
-    # Download common packages
-    for pkg in "doc" "common"; do
-        local url=$(get_download_urls "$OCS_VERSION" "$pkg")
-        if [ -n "$url" ] && [ "$url" != "https://www.hpc-gridware.com/download/XXXXX/?tmstv=XXXXXXXXXX" ]; then
-            echo "Downloading $pkg package..."
-            wget -q --show-progress -k --content-disposition "$url"
-        else
-            echo "ERROR: No valid URL for $pkg package for version $OCS_VERSION"
-            exit 1
-        fi
-    done
-    
+    # Extract files to installation directory
     echo "Extracting files to installation directory..."
-    for file in ocs-*.tar.gz; do
+    cd "$download_dir"
+    for file in *.tar.gz; do
         if [ -f "$file" ]; then
             echo "  Extracting $file..."
             sudo tar xpf "$file" -C /opt/ocs/
@@ -350,6 +442,42 @@ download_files() {
     done
     
     cd - > /dev/null
+}
+
+# Function to download files from web
+download_from_web() {
+    local version="$1"
+    local sys_arch="$2"
+    
+    # Download architecture-specific binary package
+    local bin_url=$(get_download_urls "$version" "$sys_arch")
+    if [ -n "$bin_url" ] && [ "$bin_url" != "https://hpc-gridware.com/download/XXXXX/?tmstv=XXXXXXXXXX" ]; then
+        echo "Downloading $sys_arch binary package..."
+        wget -q --show-progress -k --content-disposition "$bin_url"
+    else
+        echo "ERROR: No valid URL for $sys_arch binary package for version $version"
+        exit 1
+    fi
+    
+    # For ARM64 systems with version 9.0.6+, also check if lx-arm64 is available
+    if [ "$sys_arch" = "lx-amd64" ] && [ "$version" != "9.0.5" ]; then
+        local arm64_url=$(get_download_urls "$version" "lx-arm64")
+        if [ -n "$arm64_url" ] && [ "$arm64_url" != "https://hpc-gridware.com/download/XXXXX/?tmstv=XXXXXXXXXX" ]; then
+            echo "Note: ARM64 binary is also available for this version"
+        fi
+    fi
+    
+    # Download common packages
+    for pkg in "doc" "common"; do
+        local url=$(get_download_urls "$version" "$pkg")
+        if [ -n "$url" ] && [ "$url" != "https://hpc-gridware.com/download/XXXXX/?tmstv=XXXXXXXXXX" ]; then
+            echo "Downloading $pkg package..."
+            wget -q --show-progress -k --content-disposition "$url"
+        else
+            echo "ERROR: No valid URL for $pkg package for version $version"
+            exit 1
+        fi
+    done
 }
 
 # Create autoinstall template
@@ -424,7 +552,7 @@ install_ocs() {
     
     # Fix filestat issue with Linux namespaces
     cd "${MOUNT_DIR}"
-    local sys_arch=$(detect_architecture)
+    local sys_arch=$(./util/arch)
     sudo rm -f ./utilbin/${sys_arch}/filestat
     sudo sh -c "echo '#!/bin/sh' > ./utilbin/${sys_arch}/filestat"
     sudo sh -c "echo 'echo root' >> ./utilbin/${sys_arch}/filestat"

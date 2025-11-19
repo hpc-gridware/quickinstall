@@ -4,7 +4,7 @@ Scripts for a simple and automatic installation of Open Cluster Scheduler
 ## Example
 
 Quick install of Open Cluster Scheduler 9.0.8 on one node with qmaster and execution
-daemon.
+daemon. Without setting OCS_VERSION it installs the latest release (like 9.0.9).
 
 ```bash
 curl -s https://raw.githubusercontent.com/hpc-gridware/quickinstall/refs/heads/main/ocs.sh | OCS_VERSION=9.0.8 sh  

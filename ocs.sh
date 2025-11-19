@@ -13,7 +13,7 @@ set -e  # Exit on error
 #set -u  # Treat unset variables as errors
 
 # Default version - can be overridden by environment variable
-OCS_VERSION="${OCS_VERSION:-9.0.8}"
+OCS_VERSION="${OCS_VERSION:-9.0.9}"
 
 echo "Starting Open Cluster Scheduler installation (version: $OCS_VERSION)..."
 
@@ -146,9 +146,31 @@ get_download_urls() {
                     ;;
             esac
             ;;
+        "9.0.9")
+            case "$arch" in
+                "lx-amd64")
+                    echo "https://hpc-gridware.com/download/11419/?tmstv=1763537222"
+                    ;;
+                "lx-arm64")
+                    echo "https://hpc-gridware.com/download/11421/?tmstv=1763537222"
+                    ;;
+                "ulx-amd64")
+                    echo "https://hpc-gridware.com/download/11425/?tmstv=1763537222"
+                    ;;
+                "doc")
+                    echo "https://hpc-gridware.com/download/11433/?tmstv=1763537222"
+                    ;;
+                "common")
+                    echo "https://hpc-gridware.com/download/11431/?tmstv=1763537222"
+                    ;;
+                *)
+                    echo ""
+                    ;;
+            esac
+            ;;
         *)
             echo "ERROR: Unsupported OCS version: $version" >&2
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8" >&2
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9" >&2
             exit 1
             ;;
     esac
@@ -682,12 +704,12 @@ main() {
 
     # Validate version before proceeding
     case "$OCS_VERSION" in
-        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8")
+        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8"|"9.0.9")
             # Supported versions
             ;;
         *)
             echo "ERROR: Unsupported version: $OCS_VERSION"
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8"
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9"
             echo "Usage: OCS_VERSION=9.0.6 $0"
             exit 1
             ;;

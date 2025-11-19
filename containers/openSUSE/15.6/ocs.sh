@@ -13,9 +13,47 @@ set -e  # Exit on error
 #set -u  # Treat unset variables as errors
 
 # Default version - can be overridden by environment variable
-OCS_VERSION="${OCS_VERSION:-9.0.8}"
+OCS_VERSION="${OCS_VERSION:-9.0.9}"
 
 echo "Starting Open Cluster Scheduler installation (version: $OCS_VERSION)..."
+
+# Function to check hostname resolution
+check_hostname_resolution() {
+    local hostname=$(hostname)
+    local resolved_ip=""
+
+    echo "Checking hostname resolution for: $hostname"
+
+    # Try getent first
+    if command -v getent > /dev/null 2>&1; then
+        resolved_ip=$(getent hosts "$hostname" 2>/dev/null | awk '{ print $1 }' | head -n 1)
+    fi
+
+    # Fallback to parsing /etc/hosts if getent didn't work
+    if [ -z "$resolved_ip" ] && [ -f /etc/hosts ]; then
+        resolved_ip=$(grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+[[:space:]]" /etc/hosts | grep -w "$hostname" | awk '{ print $1 }' | head -n 1)
+    fi
+
+    # Check if we got a resolution
+    if [ -z "$resolved_ip" ]; then
+        echo "ERROR: Unable to resolve hostname '$hostname'" >&2
+        echo "Please ensure your hostname is properly configured in /etc/hosts" >&2
+        exit 1
+    fi
+
+    # Check if it resolves to loopback
+    if [ "$resolved_ip" = "127.0.0.1" ] || [ "$resolved_ip" = "127.0.1.1" ] || [ "$resolved_ip" = "::1" ]; then
+        echo "ERROR: Hostname '$hostname' resolves to loopback address ($resolved_ip)" >&2
+        echo "Open Cluster Scheduler requires hostname to resolve to a network IP address," >&2
+        echo "not 127.0.0.1 or localhost." >&2
+        echo "" >&2
+        echo "Please update /etc/hosts to map '$hostname' to your actual IP address" >&2
+        echo "(e.g., 10.x.x.x or 192.168.x.x or a public IP)." >&2
+        exit 1
+    fi
+
+    echo "OK: Hostname resolves to $resolved_ip"
+}
 
 # Function to get download URLs based on version
 get_download_urls() {
@@ -108,9 +146,31 @@ get_download_urls() {
                     ;;
             esac
             ;;
+        "9.0.9")
+            case "$arch" in
+                "lx-amd64")
+                    echo "https://hpc-gridware.com/download/11419/?tmstv=1763537222"
+                    ;;
+                "lx-arm64")
+                    echo "https://hpc-gridware.com/download/11421/?tmstv=1763537222"
+                    ;;
+                "ulx-amd64")
+                    echo "https://hpc-gridware.com/download/11425/?tmstv=1763537222"
+                    ;;
+                "doc")
+                    echo "https://hpc-gridware.com/download/11433/?tmstv=1763537222"
+                    ;;
+                "common")
+                    echo "https://hpc-gridware.com/download/11431/?tmstv=1763537222"
+                    ;;
+                *)
+                    echo ""
+                    ;;
+            esac
+            ;;
         *)
             echo "ERROR: Unsupported OCS version: $version" >&2
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8" >&2
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9" >&2
             exit 1
             ;;
     esac
@@ -637,20 +697,24 @@ main() {
     echo "Version to install: $OCS_VERSION"
     echo "================================"
     echo ""
-    
+
+    # Check hostname resolution before proceeding
+    check_hostname_resolution
+    echo ""
+
     # Validate version before proceeding
     case "$OCS_VERSION" in
-        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8")
+        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8"|"9.0.9")
             # Supported versions
             ;;
         *)
             echo "ERROR: Unsupported version: $OCS_VERSION"
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8"
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9"
             echo "Usage: OCS_VERSION=9.0.6 $0"
             exit 1
             ;;
     esac
-    
+
     install_packages
     setup_directories
     download_files

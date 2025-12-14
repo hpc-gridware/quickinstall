@@ -13,7 +13,7 @@ set -e  # Exit on error
 #set -u  # Treat unset variables as errors
 
 # Default version - can be overridden by environment variable
-OCS_VERSION="${OCS_VERSION:-9.0.9}"
+OCS_VERSION="${OCS_VERSION:-9.0.10}"
 
 echo "Starting Open Cluster Scheduler installation (version: $OCS_VERSION)..."
 
@@ -168,9 +168,31 @@ get_download_urls() {
                     ;;
             esac
             ;;
+        "9.0.10")
+            case "$arch" in
+                "lx-amd64")
+                    echo "https://hpc-gridware.com/download/11543/?tmstv=1765743707"
+                    ;;
+                "lx-arm64")
+                    echo "https://hpc-gridware.com/download/11546/?tmstv=1765743707"
+                    ;;
+                "ulx-amd64")
+                    echo "https://hpc-gridware.com/download/11550/?tmstv=1765743707"
+                    ;;
+                "doc")
+                    echo "https://hpc-gridware.com/download/11558/?tmstv=1765743707"
+                    ;;
+                "common")
+                    echo "https://hpc-gridware.com/download/11556/?tmstv=1765743707"
+                    ;;
+                *)
+                    echo ""
+                    ;;
+            esac
+            ;;
         *)
             echo "ERROR: Unsupported OCS version: $version" >&2
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9" >&2
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10" >&2
             exit 1
             ;;
     esac
@@ -544,7 +566,18 @@ download_from_web() {
 create_autoinstall_template() {
     local hostname=$(hostname)
     local template_file="$(pwd)/autoinstall.template"
-    
+
+    # Check if OCS_EXEC_HOSTS is set for multi-node configuration
+    # Expected format: "host1 host2 host3"
+    local exec_hosts="${OCS_EXEC_HOSTS:-$hostname}"
+    local admin_hosts="${OCS_ADMIN_HOSTS:-$exec_hosts}"
+    local submit_hosts="${OCS_SUBMIT_HOSTS:-$exec_hosts}"
+
+    echo "Creating installation template with:"
+    echo "  Admin hosts: $admin_hosts"
+    echo "  Submit hosts: $submit_hosts"
+    echo "  Execution hosts: $exec_hosts"
+
     cat > "$template_file" << EOF
 SGE_ROOT="/opt/ocs"
 SGE_QMASTER_PORT="6444"
@@ -559,9 +592,9 @@ GID_RANGE="20000-20200"
 SPOOLING_METHOD="classic"
 DB_SPOOLING_DIR="/opt/ocs/default/spool/bdb"
 PAR_EXECD_INST_COUNT="20"
-ADMIN_HOST_LIST="$hostname"
-SUBMIT_HOST_LIST="$hostname"
-EXEC_HOST_LIST="$hostname"
+ADMIN_HOST_LIST="$admin_hosts"
+SUBMIT_HOST_LIST="$submit_hosts"
+EXEC_HOST_LIST="$exec_hosts"
 EXECD_SPOOL_DIR_LOCAL=""
 HOSTNAME_RESOLVING="true"
 SHELL_NAME="ssh"
@@ -704,12 +737,12 @@ main() {
 
     # Validate version before proceeding
     case "$OCS_VERSION" in
-        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8"|"9.0.9")
+        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8"|"9.0.9"|"9.0.10")
             # Supported versions
             ;;
         *)
             echo "ERROR: Unsupported version: $OCS_VERSION"
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9"
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10"
             echo "Usage: OCS_VERSION=9.0.6 $0"
             exit 1
             ;;

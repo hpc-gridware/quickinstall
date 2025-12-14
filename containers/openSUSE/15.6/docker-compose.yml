@@ -1,0 +1,85 @@
+# Copyright (C) 2024 Gridware GmbH
+# Multi-node Open Cluster Scheduler Docker Compose setup for openSUSE Leap 15.6
+
+services:
+  ocs-master:
+    build:
+      context: .
+      dockerfile: Dockerfile.multinode
+    container_name: ocs-master
+    hostname: ocs-master
+    networks:
+      ocs-cluster:
+        ipv4_address: 10.100.0.10
+    volumes:
+      - ocs-install:/opt/ocs
+      - ./data:/home/gridware
+      - ./ocs.sh:/tmp/ocs.sh:ro
+    environment:
+      - OCS_VERSION=9.0.9
+      - OCS_NODE_TYPE=master
+      - OCS_MASTER_HOST=ocs-master
+      - OCS_EXEC_HOSTS=ocs-master ocs-worker1 ocs-worker2
+    privileged: true
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+
+  ocs-worker1:
+    build:
+      context: .
+      dockerfile: Dockerfile.multinode
+    container_name: ocs-worker1
+    hostname: ocs-worker1
+    networks:
+      ocs-cluster:
+        ipv4_address: 10.100.0.11
+    volumes:
+      - ocs-install:/opt/ocs
+      - ./data:/home/gridware
+      - ./ocs.sh:/tmp/ocs.sh:ro
+    environment:
+      - OCS_VERSION=9.0.9
+      - OCS_NODE_TYPE=worker
+      - OCS_MASTER_HOST=ocs-master
+    privileged: true
+    depends_on:
+      - ocs-master
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+
+  ocs-worker2:
+    build:
+      context: .
+      dockerfile: Dockerfile.multinode
+    container_name: ocs-worker2
+    hostname: ocs-worker2
+    networks:
+      ocs-cluster:
+        ipv4_address: 10.100.0.12
+    volumes:
+      - ocs-install:/opt/ocs
+      - ./data:/home/gridware
+      - ./ocs.sh:/tmp/ocs.sh:ro
+    environment:
+      - OCS_VERSION=9.0.9
+      - OCS_NODE_TYPE=worker
+      - OCS_MASTER_HOST=ocs-master
+    privileged: true
+    depends_on:
+      - ocs-master
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+
+networks:
+  ocs-cluster:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.100.0.0/16
+
+volumes:
+  ocs-install:
+    driver: local

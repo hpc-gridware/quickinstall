@@ -4,8 +4,8 @@
 FROM opensuse/leap:15.6
 
 LABEL maintainer="HPC Gridware GmbH"
-LABEL description="Open Cluster Scheduler 9.0.8 on openSUSE Leap 15.6"
-LABEL version="9.0.8"
+LABEL description="Open Cluster Scheduler 9.0.10 on openSUSE Leap 15.6"
+LABEL version="9.0.10"
 
 # Install basic dependencies required by the installation script
 RUN zypper install -y --no-recommends \
@@ -26,7 +26,7 @@ RUN chmod +x /tmp/ocs.sh
 RUN echo '#!/bin/bash' > /startup.sh && \
     echo 'if [ ! -d "/opt/ocs" ]; then' >> /startup.sh && \
     echo '    echo "Installing Open Cluster Scheduler..."' >> /startup.sh && \
-    echo '    OCS_VERSION=9.0.9 sh /tmp/ocs.sh' >> /startup.sh && \
+    echo '    OCS_VERSION=9.0.10 sh /tmp/ocs.sh' >> /startup.sh && \
     echo 'fi' >> /startup.sh && \
     echo 'exec "$@"' >> /startup.sh && \
     chmod +x /startup.sh

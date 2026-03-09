@@ -3,7 +3,7 @@ Scripts for a simple and automatic installation of Open Cluster Scheduler
 
 ## Example
 
-Quick install of Open Cluster Scheduler 9.0.8 on one node with qmaster and execution
+Quick install of Open Cluster Scheduler on one node with qmaster and execution
 daemon. Without setting OCS_VERSION it installs the latest release (like 9.0.9).
 
 ```bash

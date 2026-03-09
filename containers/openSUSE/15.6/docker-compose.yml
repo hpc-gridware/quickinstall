@@ -16,7 +16,7 @@ services:
       - ./data:/home/gridware
       - ./ocs.sh:/tmp/ocs.sh:ro
     environment:
-      - OCS_VERSION=9.0.9
+      - OCS_VERSION=9.0.11
       - OCS_NODE_TYPE=master
       - OCS_MASTER_HOST=ocs-master
       - OCS_EXEC_HOSTS=ocs-master ocs-worker1 ocs-worker2

@@ -52,7 +52,7 @@ else
     echo "  Execution hosts: ${OCS_EXEC_HOSTS}"
 
     # Set environment variables for multi-node installation
-    export OCS_VERSION="${OCS_VERSION:-9.0.9}"
+    export OCS_VERSION="${OCS_VERSION:-9.0.11}"
     export OCS_EXEC_HOSTS="${OCS_EXEC_HOSTS:-ocs-master}"
     export OCS_ADMIN_HOSTS="${OCS_ADMIN_HOSTS:-${OCS_EXEC_HOSTS}}"
     export OCS_SUBMIT_HOSTS="${OCS_SUBMIT_HOSTS:-${OCS_EXEC_HOSTS}}"

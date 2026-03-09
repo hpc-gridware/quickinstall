@@ -13,7 +13,7 @@ set -e  # Exit on error
 #set -u  # Treat unset variables as errors
 
 # Default version - can be overridden by environment variable
-OCS_VERSION="${OCS_VERSION:-9.0.10}"
+OCS_VERSION="${OCS_VERSION:-9.0.11}"
 
 echo "Starting Open Cluster Scheduler installation (version: $OCS_VERSION)..."
 
@@ -42,7 +42,7 @@ check_hostname_resolution() {
     fi
 
     # Check if it resolves to loopback
-    if [ "$resolved_ip" = "127.0.0.1" ] || [ "$resolved_ip" = "127.0.1.1" ] || [ "$resolved_ip" = "::1" ]; then
+    if [ "$resolved_ip" = "127.0.0.1" ] || [ "$resolved_ip" = "127.0.1.1" ]; then
         echo "ERROR: Hostname '$hostname' resolves to loopback address ($resolved_ip)" >&2
         echo "Open Cluster Scheduler requires hostname to resolve to a network IP address," >&2
         echo "not 127.0.0.1 or localhost." >&2
@@ -190,9 +190,31 @@ get_download_urls() {
                     ;;
             esac
             ;;
+        "9.0.11")
+            case "$arch" in
+                "lx-amd64")
+                    echo "https://hpc-gridware.com/download/11782/?tmstv=1773039540"
+                    ;;
+                "lx-arm64")
+                    echo "https://hpc-gridware.com/download/11784/?tmstv=1773039540"
+                    ;;
+                "ulx-amd64")
+                    echo "https://hpc-gridware.com/download/11788/?tmstv=1773039540"
+                    ;;
+                "doc")
+                    echo "https://hpc-gridware.com/download/11796/?tmstv=1773039540"
+                    ;;
+                "common")
+                    echo "https://hpc-gridware.com/download/11794/?tmstv=1773039540"
+                    ;;
+                *)
+                    echo ""
+                    ;;
+            esac
+            ;;
         *)
             echo "ERROR: Unsupported OCS version: $version" >&2
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10" >&2
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11" >&2
             exit 1
             ;;
     esac
@@ -737,12 +759,12 @@ main() {
 
     # Validate version before proceeding
     case "$OCS_VERSION" in
-        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8"|"9.0.9"|"9.0.10")
+        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8"|"9.0.9"|"9.0.10"|"9.0.11")
             # Supported versions
             ;;
         *)
             echo "ERROR: Unsupported version: $OCS_VERSION"
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10"
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11"
             echo "Usage: OCS_VERSION=9.0.6 $0"
             exit 1
             ;;

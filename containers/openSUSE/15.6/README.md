@@ -1,6 +1,6 @@
 # OCS openSUSE 15.6 Container
 
-Open Cluster Scheduler 9.0.10 containerized on openSUSE Leap 15.6 with support for both single-node and multi-node configurations.
+Open Cluster Scheduler containerized on openSUSE Leap 15.6 with support for both single-node and multi-node configurations.
 
 ## Single-Node Setup
 
@@ -173,7 +173,7 @@ qconf -sh
 
 To modify the cluster configuration, edit `docker-compose.yml`:
 
-- Change OCS version: Update `OCS_VERSION` environment variable
+- Change OCS version: Update `OCS_VERSION` in `docker-compose.yml`, then run `docker-compose down -v && docker-compose up -d` — the `-v` is required to remove the existing installation from the shared volume so the new version gets installed
 - Add more workers: Duplicate worker service with new name and IP
 - Change network subnet: Update `networks.ocs-cluster.ipam.config.subnet`
 - Use host directory for installation: Change `ocs-install` volume to bind mount

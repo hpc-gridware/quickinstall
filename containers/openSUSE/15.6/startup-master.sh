@@ -90,14 +90,15 @@ else
     echo "Cluster configuration complete."
 fi
 
-# Add OCS settings to gridware user's bashrc
+# Add OCS settings to bashrc for root and gridware user
 if [ -f "/opt/ocs/default/common/settings.sh" ]; then
-    if ! grep -q "/opt/ocs/default/common/settings.sh" /home/gridware/.bashrc 2>/dev/null; then
-        echo "" >> /home/gridware/.bashrc
-        echo "# Open Cluster Scheduler settings" >> /home/gridware/.bashrc
-        echo ". /opt/ocs/default/common/settings.sh" >> /home/gridware/.bashrc
-        echo "Added OCS settings to gridware user's bashrc"
-    fi
+    for bashrc in /root/.bashrc /home/gridware/.bashrc; do
+        if ! grep -q "/opt/ocs/default/common/settings.sh" "$bashrc" 2>/dev/null; then
+            echo "" >> "$bashrc"
+            echo "# Open Cluster Scheduler settings" >> "$bashrc"
+            echo ". /opt/ocs/default/common/settings.sh" >> "$bashrc"
+        fi
+    done
 fi
 
 echo "=================================================="

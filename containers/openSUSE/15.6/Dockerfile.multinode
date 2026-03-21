@@ -4,8 +4,8 @@
 FROM opensuse/leap:15.6
 
 LABEL maintainer="HPC Gridware GmbH"
-LABEL description="Open Cluster Scheduler 9.0.11 Multi-node on openSUSE Leap 15.6"
-LABEL version="9.0.11"
+LABEL description="Open Cluster Scheduler 9.1.0 Multi-node on openSUSE Leap 15.6"
+LABEL version="9.1.0"
 
 # Install basic dependencies required by the installation script and OCS runtime
 RUN zypper install -y --no-recommends \

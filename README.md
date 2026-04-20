@@ -1,5 +1,7 @@
 # quickinstall
-Scripts for a simple and automatic installation of Open Cluster Scheduler
+
+Scripts for a simple and automatic installation of Open Cluster Scheduler in 
+VMs or containers.
 
 ## Example
 
@@ -12,3 +14,7 @@ curl -s https://raw.githubusercontent.com/hpc-gridware/quickinstall/refs/heads/m
 
 The installation of the OCS can be adapted by modifying the installation
 template within the script and subsequently executing the script locally.
+
+## Multi-Node
+
+The subdirectory contains a multi-node container installation using docker compose.

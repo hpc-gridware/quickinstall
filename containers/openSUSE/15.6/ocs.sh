@@ -212,6 +212,28 @@ get_download_urls() {
                     ;;
             esac
             ;;
+        "9.0.12")
+            case "$arch" in
+                "lx-amd64")
+                    echo "https://hpc-gridware.com/download/11948/?tmstv=1776666481"
+                    ;;
+                "lx-arm64")
+                    echo "https://hpc-gridware.com/download/11950/?tmstv=1776666481"
+                    ;;
+                "ulx-amd64")
+                    echo "https://hpc-gridware.com/download/11954/?tmstv=1776666481"
+                    ;;
+                "doc")
+                    echo "https://hpc-gridware.com/download/11962/?tmstv=1776666481"
+                    ;;
+                "common")
+                    echo "https://hpc-gridware.com/download/11960/?tmstv=1776666481"
+                    ;;
+                *)
+                    echo ""
+                    ;;
+            esac
+            ;;
         "9.1.0")
             case "$arch" in
                 "lx-amd64")
@@ -236,7 +258,7 @@ get_download_urls() {
             ;;
         *)
             echo "ERROR: Unsupported OCS version: $version" >&2
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.1.0" >&2
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0" >&2
             exit 1
             ;;
     esac
@@ -781,12 +803,12 @@ main() {
 
     # Validate version before proceeding
     case "$OCS_VERSION" in
-        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8"|"9.0.9"|"9.0.10"|"9.0.11"|"9.1.0")
+        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8"|"9.0.9"|"9.0.10"|"9.0.11"|"9.0.12"|"9.1.0")
             # Supported versions
             ;;
         *)
             echo "ERROR: Unsupported version: $OCS_VERSION"
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.1.0"
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0"
             echo "Usage: OCS_VERSION=9.0.6 $0"
             exit 1
             ;;

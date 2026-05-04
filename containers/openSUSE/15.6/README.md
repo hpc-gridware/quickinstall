@@ -32,6 +32,13 @@ For a complete multi-node OCS cluster with 1 master and 2 worker nodes using Doc
    docker-compose up -d
    ```
 
+   By default this installs the latest supported OCS version. To pin a specific
+   version, export `OCS_VERSION` before bringing the cluster up (or place it in
+   a `.env` file next to `docker-compose.yml`):
+   ```bash
+   OCS_VERSION=9.0.12 docker-compose up -d
+   ```
+
 2. **Check cluster status:**
    ```bash
    docker exec -it ocs-master bash
@@ -118,6 +125,8 @@ qconf -sq all.q  # Show all.q configuration
 - **User Data**: Stored in `./data` directory on host, mounted to `/home/gridware` in all containers
 - **Shared Filesystem**: All nodes share the same `/opt/ocs` installation and `/home/gridware` directory
 
+> Note: `docker-compose down` keeps the `ocs-install` volume. Use `docker-compose down -v` to remove it for a clean reinstall.
+
 Create the data directory before starting:
 ```bash
 mkdir -p ./data
@@ -173,7 +182,7 @@ qconf -sh
 
 To modify the cluster configuration, edit `docker-compose.yml`:
 
-- Change OCS version: Update `OCS_VERSION` in `docker-compose.yml`, then run `docker-compose down -v && docker-compose up -d` — the `-v` is required to remove the existing installation from the shared volume so the new version gets installed
+- Change OCS version: set the `OCS_VERSION` environment variable (or add it to a `.env` file), then run `docker-compose down -v && OCS_VERSION=X.Y.Z docker-compose up -d` — the `-v` is required to remove the existing installation from the shared volume so the new version gets installed. Omit the variable to use the latest supported version.
 - Add more workers: Duplicate worker service with new name and IP
 - Change network subnet: Update `networks.ocs-cluster.ipam.config.subnet`
 - Use host directory for installation: Change `ocs-install` volume to bind mount

@@ -8,6 +8,11 @@ echo "=================================================="
 echo "OCS Master Node Startup"
 echo "=================================================="
 
+# Fix ownership of bind-mounted home dir for gridware (uid 1000).
+# Required on Linux hosts where bind mounts retain host UIDs; on macOS
+# Docker Desktop maps UIDs transparently and this is a no-op.
+chown -R gridware:gridware /home/gridware
+
 # Configure /etc/hosts with all cluster nodes
 echo "Configuring /etc/hosts with cluster nodes..."
 cat >> /etc/hosts << EOF

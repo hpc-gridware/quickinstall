@@ -27,7 +27,17 @@ For a complete multi-node OCS cluster with 1 master and 2 worker nodes using Doc
 
 ### Quick Start
 
-1. **Build and start the cluster:**
+1. **Run the preflight check** (recommended, especially on Linux hosts):
+   ```bash
+   ./preflight.sh
+   ```
+   This warns if the host already routes `10.100.0.0/16` (VPN, corporate LAN,
+   another docker network), which would cause `docker compose up` to fail or
+   route traffic incorrectly. If it reports a conflict, change the subnet in
+   `docker-compose.yml` (`networks.ocs-cluster.ipam.config.subnet`) before
+   continuing.
+
+2. **Build and start the cluster:**
    ```bash
    docker-compose up -d
    ```
@@ -39,14 +49,14 @@ For a complete multi-node OCS cluster with 1 master and 2 worker nodes using Doc
    OCS_VERSION=9.0.12 docker-compose up -d
    ```
 
-2. **Check cluster status:**
+3. **Check cluster status:**
    ```bash
    docker exec -it ocs-master bash
    source /opt/ocs/default/common/settings.sh
    qhost
    ```
 
-3. **Submit a test job:**
+4. **Submit a test job:**
    ```bash
    docker exec -it -u gridware ocs-master bash
    source /opt/ocs/default/common/settings.sh
@@ -133,6 +143,12 @@ mkdir -p ./data
 chmod 755 ./data
 ```
 
+> Note (Linux hosts): the container's `gridware` user is uid 1000. On startup,
+> each node runs `chown -R gridware:gridware /home/gridware`, so the host-side
+> `./data` files end up owned by uid 1000. If your host user is not uid 1000
+> and you want to access these files directly from the host, `sudo chown`
+> them back after stopping the cluster.
+
 ### Network Configuration
 
 The cluster uses a custom bridge network with fixed IP addresses:
@@ -194,6 +210,7 @@ To modify the cluster configuration, edit `docker-compose.yml`:
 - `startup-master.sh`: Master node initialization script
 - `startup-worker.sh`: Worker node initialization script
 - `ocs.sh`: OCS installation script (copied from repository root)
+- `preflight.sh`: Host-side subnet conflict check (run before `docker compose up`)
 
 ### Requirements
 

@@ -13,7 +13,7 @@ set -e  # Exit on error
 #set -u  # Treat unset variables as errors
 
 # Default version - can be overridden by environment variable
-OCS_VERSION="${OCS_VERSION:-9.1.1}"
+OCS_VERSION="${OCS_VERSION:-9.1.3}"
 
 echo "Starting Open Cluster Scheduler installation (version: $OCS_VERSION)..."
 
@@ -278,9 +278,53 @@ get_download_urls() {
                     ;;
             esac
             ;;
+        "9.1.2")
+            case "$arch" in
+                "lx-amd64")
+                    echo "https://hpc-gridware.com/download/12040/?tmstv=1783067034"
+                    ;;
+                "lx-arm64")
+                    echo "https://hpc-gridware.com/download/12042/?tmstv=1783067034"
+                    ;;
+                "ulx-amd64")
+                    echo "https://hpc-gridware.com/download/12046/?tmstv=1783067034"
+                    ;;
+                "doc")
+                    echo "https://hpc-gridware.com/download/12054/?tmstv=1783067034"
+                    ;;
+                "common")
+                    echo "https://hpc-gridware.com/download/12052/?tmstv=1783067034"
+                    ;;
+                *)
+                    echo ""
+                    ;;
+            esac
+            ;;
+        "9.1.3")
+            case "$arch" in
+                "lx-amd64")
+                    echo "https://hpc-gridware.com/download/12155/?tmstv=1783067032"
+                    ;;
+                "lx-arm64")
+                    echo "https://hpc-gridware.com/download/12157/?tmstv=1783067032"
+                    ;;
+                "ulx-amd64")
+                    echo "https://hpc-gridware.com/download/12161/?tmstv=1783067032"
+                    ;;
+                "doc")
+                    echo "https://hpc-gridware.com/download/12169/?tmstv=1783067032"
+                    ;;
+                "common")
+                    echo "https://hpc-gridware.com/download/12167/?tmstv=1783067032"
+                    ;;
+                *)
+                    echo ""
+                    ;;
+            esac
+            ;;
         *)
             echo "ERROR: Unsupported OCS version: $version" >&2
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0, 9.1.1" >&2
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0, 9.1.1, 9.1.2, 9.1.3" >&2
             exit 1
             ;;
     esac
@@ -825,12 +869,12 @@ main() {
 
     # Validate version before proceeding
     case "$OCS_VERSION" in
-        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8"|"9.0.9"|"9.0.10"|"9.0.11"|"9.0.12"|"9.1.0"|"9.1.1")
+        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8"|"9.0.9"|"9.0.10"|"9.0.11"|"9.0.12"|"9.1.0"|"9.1.1"|"9.1.2"|"9.1.3")
             # Supported versions
             ;;
         *)
             echo "ERROR: Unsupported version: $OCS_VERSION"
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0, 9.1.1"
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0, 9.1.1, 9.1.2, 9.1.3"
             echo "Usage: OCS_VERSION=9.0.6 $0"
             exit 1
             ;;

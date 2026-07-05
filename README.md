@@ -17,4 +17,29 @@ template within the script and subsequently executing the script locally.
 
 ## Multi-Node
 
-The subdirectory contains a multi-node container installation using docker compose.
+The subdirectory contains a multi-node container installation using docker compose
+for (integration) testing.
+
+```bash
+docker-compose up -d
+
+# wait until system is installed
+docker-compose logs -f
+
+# login to the container
+docker exec -it ocs-master bash
+```
+
+Inside the container, source the settings and check the cluster:
+
+```console
+ocs-master:/ # source /opt/ocs/default/common/settings.sh
+ocs-master:/ # qhost
+HOSTNAME                ARCH         NCPU  NSOC  NCOR  NTHR   LOAD  MEMTOT  MEMUSE  SWAPTO  SWAPUS
+--------------------------------------------------------------------------------------------------
+global                  -               -     -     -     -      -       -       -       -       -
+ocs-master              lx-arm64       14     1    14    14   2.17    7.7G    3.2G 1024.0M     0.0
+ocs-worker1             lx-arm64       14     1    14    14   2.18    7.7G    3.2G 1024.0M     0.0
+ocs-worker2             lx-arm64       14     1    14    14   2.18    7.7G    3.2G 1024.0M     0.0
+ocs-master:/ #
+```

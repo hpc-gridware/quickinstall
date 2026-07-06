@@ -25,6 +25,27 @@ EOF
 echo "Cluster nodes configured:"
 grep "^10.100.0" /etc/hosts
 
+# Start SSH daemon
+echo "Starting SSH daemon..."
+ssh-keygen -A
+if ! pgrep -x sshd > /dev/null; then
+    /usr/sbin/sshd
+fi
+
+# Set up passwordless SSH for gridware. /home/gridware is shared between
+# all nodes, so one keypair in ~/.ssh works cluster-wide; only the master
+# generates it, the workers pick it up via the shared home.
+SSH_DIR=/home/gridware/.ssh
+if [ ! -f "$SSH_DIR/id_ed25519" ]; then
+    echo "Generating SSH keypair for gridware user..."
+    mkdir -p "$SSH_DIR"
+    ssh-keygen -t ed25519 -N "" -f "$SSH_DIR/id_ed25519"
+    cat "$SSH_DIR/id_ed25519.pub" >> "$SSH_DIR/authorized_keys"
+    chmod 700 "$SSH_DIR"
+    chmod 600 "$SSH_DIR/authorized_keys" "$SSH_DIR/id_ed25519"
+    chown -R gridware:gridware "$SSH_DIR"
+fi
+
 # Wait a moment for network to be ready
 sleep 2
 

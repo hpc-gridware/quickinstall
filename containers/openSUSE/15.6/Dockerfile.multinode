@@ -19,11 +19,20 @@ RUN zypper install -y --no-recommends \
     iproute2 \
     iputils \
     binutils \
+    vim \
+    openssh \
     && zypper clean -a
 
-# Create gridware user for shared operations across all nodes
+# Create gridware user for shared operations across all nodes.
+# 'usermod -p *' unlocks the account for pubkey SSH logins without
+# setting a password (useradd leaves it locked with '!').
 RUN useradd -m -u 1000 -s /bin/bash gridware && \
+    usermod -p '*' gridware && \
     echo "gridware ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+# Host keys are regenerated whenever a container is recreated, so strict
+# host key checking would break cluster-internal SSH after every restart.
+RUN printf 'Host *\n    StrictHostKeyChecking no\n    UserKnownHostsFile /dev/null\n    LogLevel ERROR\n' >> /etc/ssh/ssh_config
 
 # Copy startup scripts
 COPY startup-master.sh /startup-master.sh

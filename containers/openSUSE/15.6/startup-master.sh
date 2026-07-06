@@ -28,6 +28,15 @@ grep "^10.100.0" /etc/hosts
 # Wait a moment for network to be ready
 sleep 2
 
+# Accept newer Linux kernels in the arch detection script of an existing
+# installation. Upstream only whitelists kernels up to 6.*; newer kernels
+# (e.g. 7.x used by OrbStack) are reported as UNSUPPORTED-* and daemon
+# startup fails with "can't determine path to Cluster Scheduler utility
+# binaries". Idempotent: the pattern no longer matches once replaced.
+if [ -f /opt/ocs/util/arch ]; then
+    sed -i 's/2\.4\.\*|2\.6\.\*|3\.\*|4\.\*|5\.\*|6\.\*)/2.4.*|2.6.*|[3-9].*)/' /opt/ocs/util/arch
+fi
+
 # Check if OCS is already installed
 if [ -d "/opt/ocs/default/common" ]; then
     echo "Open Cluster Scheduler is already installed."
@@ -37,13 +46,21 @@ if [ -d "/opt/ocs/default/common" ]; then
     if [ -f "/opt/ocs/default/common/settings.sh" ]; then
         . /opt/ocs/default/common/settings.sh
 
-        # Start master daemon
-        echo "Starting qmaster daemon..."
-        /opt/ocs/default/common/sgemaster start
+        # Start master daemon (skip if already running, e.g. container restart)
+        if pgrep -x sge_qmaster > /dev/null; then
+            echo "qmaster daemon is already running."
+        else
+            echo "Starting qmaster daemon..."
+            /opt/ocs/default/common/sgemaster start
+        fi
 
         # Start execd daemon on master
-        echo "Starting execd daemon on master..."
-        /opt/ocs/default/common/sgeexecd start
+        if pgrep -x sge_execd > /dev/null; then
+            echo "execd daemon is already running."
+        else
+            echo "Starting execd daemon on master..."
+            /opt/ocs/default/common/sgeexecd start
+        fi
 
         echo "OCS daemons started successfully."
     else

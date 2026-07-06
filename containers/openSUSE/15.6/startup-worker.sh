@@ -42,6 +42,15 @@ fi
 
 echo "Master installation detected. Configuring worker node..."
 
+# Accept newer Linux kernels in the arch detection script of an existing
+# installation. Upstream only whitelists kernels up to 6.*; newer kernels
+# (e.g. 7.x used by OrbStack) are reported as UNSUPPORTED-* and daemon
+# startup fails with "can't determine path to Cluster Scheduler utility
+# binaries". Idempotent: the pattern no longer matches once replaced.
+if [ -f /opt/ocs/util/arch ]; then
+    sed -i 's/2\.4\.\*|2\.6\.\*|3\.\*|4\.\*|5\.\*|6\.\*)/2.4.*|2.6.*|[3-9].*)/' /opt/ocs/util/arch
+fi
+
 # Source OCS environment
 . /opt/ocs/default/common/settings.sh
 
@@ -49,9 +58,13 @@ echo "Master installation detected. Configuring worker node..."
 echo "Waiting for master daemons to be ready..."
 sleep 10
 
-# Start execd daemon on this worker
-echo "Starting execd daemon on $(hostname)..."
-/opt/ocs/default/common/sgeexecd start
+# Start execd daemon on this worker (skip if already running)
+if pgrep -x sge_execd > /dev/null; then
+    echo "execd daemon is already running."
+else
+    echo "Starting execd daemon on $(hostname)..."
+    /opt/ocs/default/common/sgeexecd start
+fi
 
 # Wait to ensure execd is running
 sleep 3

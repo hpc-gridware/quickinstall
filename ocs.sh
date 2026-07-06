@@ -654,8 +654,16 @@ download_files() {
             sudo tar xpf "$file" -C /opt/ocs/
         fi
     done
-    
+
     cd - > /dev/null
+
+    # Accept newer Linux kernels in the arch detection script. Upstream only
+    # whitelists kernels up to 6.*; newer kernels (e.g. 7.x used by OrbStack)
+    # are reported as UNSUPPORTED-* and daemon startup fails with
+    # "can't determine path to Cluster Scheduler utility binaries".
+    if [ -f /opt/ocs/util/arch ]; then
+        sudo sed -i 's/2\.4\.\*|2\.6\.\*|3\.\*|4\.\*|5\.\*|6\.\*)/2.4.*|2.6.*|[3-9].*)/' /opt/ocs/util/arch
+    fi
 }
 
 # Function to download files from web

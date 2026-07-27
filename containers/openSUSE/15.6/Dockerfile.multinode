@@ -4,8 +4,8 @@
 FROM opensuse/leap:15.6
 
 LABEL maintainer="HPC Gridware GmbH"
-LABEL description="Open Cluster Scheduler 9.1.0 Multi-node on openSUSE Leap 15.6"
-LABEL version="9.1.0"
+LABEL description="Open Cluster Scheduler Multi-node on openSUSE Leap 15.6"
+LABEL version="9.1.4"
 
 # Install basic dependencies required by the installation script and OCS runtime
 RUN zypper install -y --no-recommends \
@@ -21,6 +21,7 @@ RUN zypper install -y --no-recommends \
     binutils \
     vim \
     openssh \
+    man \
     && zypper clean -a
 
 # Create gridware user for shared operations across all nodes.
@@ -33,6 +34,21 @@ RUN useradd -m -u 1000 -s /bin/bash gridware && \
 # Host keys are regenerated whenever a container is recreated, so strict
 # host key checking would break cluster-internal SSH after every restart.
 RUN printf 'Host *\n    StrictHostKeyChecking no\n    UserKnownHostsFile /dev/null\n    LogLevel ERROR\n' >> /etc/ssh/ssh_config
+
+# Wire up the OCS shell environment at image build time so it is present even
+# when the installation later fails: openSUSE ships no /root/.bashrc at all and
+# does not read /etc/profile.d for the non-login shell of "docker exec -it bash".
+# The settings.sh path in the comment line is the marker ocs.sh greps for, which
+# keeps the installer from appending a second, unguarded sourcing line.
+COPY ocs-env.sh /etc/profile.d/ocs.sh
+COPY ocs-banner.sh /etc/ocs-banner.sh
+RUN chmod 644 /etc/profile.d/ocs.sh /etc/ocs-banner.sh && \
+    printf '%s\n' \
+      '# Open Cluster Scheduler environment: /opt/ocs/default/common/settings.sh' \
+      '. /etc/profile.d/ocs.sh' > /etc/ocs-bashrc.snippet && \
+    cat /etc/ocs-bashrc.snippet >> /root/.bashrc && \
+    cat /etc/ocs-bashrc.snippet >> /home/gridware/.bashrc && \
+    chown gridware:gridware /home/gridware/.bashrc
 
 # Copy startup scripts
 COPY startup-master.sh /startup-master.sh

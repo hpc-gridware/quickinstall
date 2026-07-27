@@ -13,6 +13,13 @@ echo "=================================================="
 # Docker Desktop maps UIDs transparently and this is a no-op.
 chown -R gridware:gridware /home/gridware
 
+# The bind mount hides the .bashrc that the image put into /home/gridware, so
+# write it again here (the master does the same; whoever comes first wins).
+if ! grep -q "/etc/profile.d/ocs.sh" /home/gridware/.bashrc 2>/dev/null; then
+    cat /etc/ocs-bashrc.snippet >> /home/gridware/.bashrc
+fi
+chown gridware:gridware /home/gridware/.bashrc
+
 # Configure /etc/hosts with all cluster nodes
 echo "Configuring /etc/hosts with cluster nodes..."
 cat >> /etc/hosts << EOF
@@ -85,14 +92,42 @@ else
     echo "WARNING: Execd daemon may not have started correctly"
 fi
 
-# Add OCS settings to bashrc for root and gridware user
-for bashrc in /root/.bashrc /home/gridware/.bashrc; do
-    if ! grep -q "/opt/ocs/default/common/settings.sh" "$bashrc" 2>/dev/null; then
-        echo "" >> "$bashrc"
-        echo "# Open Cluster Scheduler settings" >> "$bashrc"
-        echo ". /opt/ocs/default/common/settings.sh" >> "$bashrc"
+# Join the @allhosts host group, which is what creates the all.q instance on
+# this node. The master installs its own execd only (installing ours remotely
+# would require passwordless root ssh), so the node has to register itself.
+# A running execd alone just makes the node show up in qhost - without a queue
+# instance nothing can be scheduled here, and a job bound to this node, e.g.
+# "qrsh -l h=$(hostname)", fails with "could not be scheduled, try again later".
+# Idempotent: an already registered host is left untouched, including its slot
+# count, so restarts never overwrite a slot number set by an administrator.
+echo "Registering $(hostname) in the @allhosts host group..."
+REGISTERED=false
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    if qconf -shgrp_resolved @allhosts 2>/dev/null | tr -d '\\' | tr ' ' '\n' |
+            grep -qx "$(hostname)"; then
+        echo "$(hostname) is a member of @allhosts."
+        REGISTERED=true
+        break
     fi
+
+    if qconf -aattr hostgroup hostlist "$(hostname)" @allhosts; then
+        # A fresh queue instance inherits the default slot count of all.q,
+        # which is 1. Give it the cores of this node, like the installer does.
+        qconf -mattr queue slots "$(nproc)" "all.q@$(hostname)" ||
+            echo "WARNING: cannot set slot count of all.q@$(hostname)"
+        REGISTERED=true
+        break
+    fi
+
+    echo "qmaster not ready yet, retrying registration (${attempt}/10)..."
+    sleep 5
 done
+
+if [ "$REGISTERED" != "true" ]; then
+    echo "WARNING: $(hostname) is not in @allhosts, it has no queue instance"
+    echo "         and cannot run jobs. Check the qmaster and retry with:"
+    echo "         qconf -aattr hostgroup hostlist $(hostname) @allhosts"
+fi
 
 echo "=================================================="
 echo "Worker node $(hostname) ready and joined cluster."

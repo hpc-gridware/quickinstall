@@ -13,6 +13,14 @@ echo "=================================================="
 # Docker Desktop maps UIDs transparently and this is a no-op.
 chown -R gridware:gridware /home/gridware
 
+# The bind mount hides the .bashrc that the image put into /home/gridware, so
+# write it again here. Done before the installation so that the OCS environment
+# is in place even if the installation fails or is still running.
+if ! grep -q "/etc/profile.d/ocs.sh" /home/gridware/.bashrc 2>/dev/null; then
+    cat /etc/ocs-bashrc.snippet >> /home/gridware/.bashrc
+fi
+chown gridware:gridware /home/gridware/.bashrc
+
 # Configure /etc/hosts with all cluster nodes
 echo "Configuring /etc/hosts with cluster nodes..."
 cat >> /etc/hosts << EOF
@@ -58,6 +66,11 @@ if [ -f /opt/ocs/util/arch ]; then
     sed -i 's/2\.4\.\*|2\.6\.\*|3\.\*|4\.\*|5\.\*|6\.\*)/2.4.*|2.6.*|[3-9].*)/' /opt/ocs/util/arch
 fi
 
+# Nodes that form the cluster. Used for the admin and submit host lists only:
+# every node installs and registers its own execd, so nothing here triggers a
+# remote installation. Defaults to this host, which is the single-node case.
+CLUSTER_HOSTS="${OCS_EXEC_HOSTS:-$(hostname)}"
+
 # Check if OCS is already installed
 if [ -d "/opt/ocs/default/common" ]; then
     echo "Open Cluster Scheduler is already installed."
@@ -92,13 +105,21 @@ else
     echo "OCS not installed. Starting installation..."
     echo "Installation will configure cluster with:"
     echo "  Master: ${OCS_MASTER_HOST}"
-    echo "  Execution hosts: ${OCS_EXEC_HOSTS}"
+    echo "  Cluster hosts: ${CLUSTER_HOSTS}"
 
-    # Set environment variables for multi-node installation
-    export OCS_VERSION="${OCS_VERSION:-9.1.3}"
-    export OCS_EXEC_HOSTS="${OCS_EXEC_HOSTS:-ocs-master}"
-    export OCS_ADMIN_HOSTS="${OCS_ADMIN_HOSTS:-${OCS_EXEC_HOSTS}}"
-    export OCS_SUBMIT_HOSTS="${OCS_SUBMIT_HOSTS:-${OCS_EXEC_HOSTS}}"
+    # Set environment variables for multi-node installation. OCS_VERSION is
+    # passed through as it is; ocs.sh defaults to the latest supported version.
+    export OCS_ADMIN_HOSTS="${OCS_ADMIN_HOSTS:-${CLUSTER_HOSTS}}"
+    export OCS_SUBMIT_HOSTS="${OCS_SUBMIT_HOSTS:-${CLUSTER_HOSTS}}"
+
+    # Install the execd of this node only. Every additional host in
+    # EXEC_HOST_LIST makes the auto installer ssh into that node as root to
+    # install its execd remotely. root has no key in this image, so the ssh
+    # blocks on the password prompt forever and the installation never
+    # finishes. The workers install and register their own execd instead, see
+    # startup-worker.sh. For a single-node setup this is the full list anyway.
+    OCS_EXEC_HOSTS="$(hostname)"
+    export OCS_EXEC_HOSTS
 
     # Copy installation script to writable location
     cp /tmp/ocs.sh /root/ocs.sh
@@ -109,44 +130,24 @@ else
     /root/ocs.sh
 
     echo "OCS installation completed on master node."
-
-    # Configure worker nodes in the cluster
-    echo "Configuring execution hosts in cluster..."
-    . /opt/ocs/default/common/settings.sh
-
-    # Add all execution hosts (from OCS_EXEC_HOSTS) to the cluster
-    for host in $OCS_EXEC_HOSTS; do
-        if [ "$host" != "ocs-master" ]; then
-            echo "Adding $host to cluster configuration..."
-
-            # Add as admin host
-            qconf -ah "$host" 2>/dev/null || echo "$host already in admin host list"
-
-            # Add as submit host
-            qconf -as "$host" 2>/dev/null || echo "$host already in submit host list"
-
-            # Add to @allhosts hostgroup
-            qconf -aattr hostgroup hostlist "$host" @allhosts 2>/dev/null || echo "$host already in @allhosts"
-        fi
-    done
-
-    echo "Cluster configuration complete."
 fi
 
-# Add OCS settings to bashrc for root and gridware user
-if [ -f "/opt/ocs/default/common/settings.sh" ]; then
-    for bashrc in /root/.bashrc /home/gridware/.bashrc; do
-        if ! grep -q "/opt/ocs/default/common/settings.sh" "$bashrc" 2>/dev/null; then
-            echo "" >> "$bashrc"
-            echo "# Open Cluster Scheduler settings" >> "$bashrc"
-            echo ". /opt/ocs/default/common/settings.sh" >> "$bashrc"
-        fi
-    done
-fi
+. /opt/ocs/default/common/settings.sh
+
+# Let every cluster node talk to the qmaster. The installation already did this
+# for the hosts it knew about; repeating it on every start picks up nodes added
+# to OCS_EXEC_HOSTS later and is a no-op otherwise. A worker has to be an admin
+# host before it can register its execd and create its queue instance.
+echo "Checking admin and submit host lists..."
+for host in $CLUSTER_HOSTS; do
+    qconf -sh | grep -qx "$host" || qconf -ah "$host" ||
+        echo "WARNING: cannot add $host as admin host"
+    qconf -ss | grep -qx "$host" || qconf -as "$host" ||
+        echo "WARNING: cannot add $host as submit host"
+done
 
 echo "=================================================="
 echo "Master node ready. Cluster information:"
-. /opt/ocs/default/common/settings.sh
 qconf -sh 2>/dev/null || echo "Waiting for qmaster to be fully ready..."
 echo "=================================================="
 

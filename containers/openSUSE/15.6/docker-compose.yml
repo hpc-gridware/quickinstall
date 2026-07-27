@@ -1,5 +1,9 @@
 # Copyright (C) 2024 Gridware GmbH
 # Multi-node Open Cluster Scheduler Docker Compose setup for openSUSE Leap 15.6
+#
+# OCS_VERSION is passed through from the shell. When it is unset, ocs.sh
+# installs the latest supported version, which keeps that default in one place:
+#   OCS_VERSION=9.0.12 docker compose up -d --build
 
 services:
   ocs-master:
@@ -16,7 +20,7 @@ services:
       - ./data:/home/gridware
       - ./ocs.sh:/tmp/ocs.sh:ro
     environment:
-      - OCS_VERSION=${OCS_VERSION:-9.1.3}
+      - OCS_VERSION
       - OCS_NODE_TYPE=master
       - OCS_MASTER_HOST=ocs-master
       - OCS_EXEC_HOSTS=ocs-master ocs-worker1 ocs-worker2
@@ -39,7 +43,7 @@ services:
       - ./data:/home/gridware
       - ./ocs.sh:/tmp/ocs.sh:ro
     environment:
-      - OCS_VERSION=${OCS_VERSION:-9.1.3}
+      - OCS_VERSION
       - OCS_NODE_TYPE=worker
       - OCS_MASTER_HOST=ocs-master
     privileged: true
@@ -63,7 +67,7 @@ services:
       - ./data:/home/gridware
       - ./ocs.sh:/tmp/ocs.sh:ro
     environment:
-      - OCS_VERSION=${OCS_VERSION:-9.1.3}
+      - OCS_VERSION
       - OCS_NODE_TYPE=worker
       - OCS_MASTER_HOST=ocs-master
     privileged: true

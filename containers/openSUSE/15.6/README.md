@@ -9,6 +9,12 @@ docker build -t ocs-opensuse:15.6 .
 docker run -it --rm ocs-opensuse:15.6 /bin/bash
 ```
 
+Pin a version (default is the latest supported):
+
+```bash
+docker run -it --rm -e OCS_VERSION=9.0.12 ocs-opensuse:15.6 /bin/bash
+```
+
 ## Multi-Node Cluster (1 master, 2 workers)
 
 ```bash
@@ -25,9 +31,18 @@ OCS_VERSION=9.0.12 docker compose up -d --build
 Verify:
 
 ```bash
-docker exec -it ocs-master bash    # settings.sh is sourced via .bashrc
-qhost                              # all three nodes should be listed
+docker exec -it ocs-master bash    # settings.sh is sourced, prints a command reference
+qhost                              # all three nodes registered with the qmaster
+qstat -f                           # all three all.q instances - this is what jobs need
 ```
+
+`qhost` only proves that an execd talks to the qmaster. A node without a queue
+instance still shows up there while being unable to run anything, so check
+`qstat -f` as well.
+
+Interactive shells of `root` and `gridware` source `/opt/ocs/default/common/settings.sh`
+automatically (via `/etc/profile.d/ocs.sh`, wired into both `.bashrc` files) and show a
+short command reference. Hide the banner with `touch ~/.hushlogin`.
 
 Submit a test job:
 
@@ -68,11 +83,30 @@ docker compose logs ocs-master                 # installation problems
 docker exec -it ocs-worker1 ping ocs-master    # worker connectivity
 ```
 
-Restart daemons manually (inside a container, as root):
+Restart daemons manually (inside a container, as root). The start/stop scripts
+take `start`, `stop` and `softstop` — there is no `restart`:
 
 ```bash
-/opt/ocs/default/common/sgemaster restart   # master only
-/opt/ocs/default/common/sgeexecd restart
+/opt/ocs/default/common/sgemaster stop && /opt/ocs/default/common/sgemaster start   # master only
+/opt/ocs/default/common/sgeexecd stop && /opt/ocs/default/common/sgeexecd start
+```
+
+A node that is listed by `qhost` but has no `all.q` instance in `qstat -f` runs
+an execd without being part of the cluster queue. Nothing can be scheduled on
+it, and a job bound to it fails immediately:
+
+```
+$ qrsh -l h=ocs-worker1
+Your "qrsh" request could not be scheduled, try again later.
+```
+
+Each node joins the `@allhosts` host group itself during startup, which is what
+creates its queue instance. If that failed — the worker log says so — repeat it
+on the affected node:
+
+```bash
+qconf -aattr hostgroup hostlist $(hostname) @allhosts
+qconf -mattr queue slots "$(nproc)" all.q@$(hostname)
 ```
 
 ## Files
@@ -80,6 +114,7 @@ Restart daemons manually (inside a container, as root):
 - `docker-compose.yml` — cluster definition
 - `Dockerfile` / `Dockerfile.multinode` — single-node / cluster image
 - `startup-master.sh` / `startup-worker.sh` — node init scripts
+- `ocs-env.sh` / `ocs-banner.sh` — shell environment and welcome banner (`/etc/profile.d/ocs.sh`, `/etc/ocs-banner.sh`)
 - `ocs.sh` — installer (identical copy of the repository root `ocs.sh`)
 - `preflight.sh` — host subnet conflict check
 

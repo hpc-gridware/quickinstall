@@ -325,19 +325,19 @@ get_download_urls() {
         "9.1.4")
             case "$arch" in
                 "lx-amd64")
-                    echo "https://hpc-gridware.com/download/12199/?tmstv=1785141625"
+                    echo "https://hpc-gridware.com/download/12208/?tmstv=1785922282"
                     ;;
                 "lx-arm64")
-                    echo "https://hpc-gridware.com/download/12201/?tmstv=1785141625"
+                    echo "https://hpc-gridware.com/download/12210/?tmstv=1785922282"
                     ;;
                 "ulx-amd64")
-                    echo "https://hpc-gridware.com/download/12205/?tmstv=1785141625"
+                    echo "https://hpc-gridware.com/download/12214/?tmstv=1785922282"
                     ;;
                 "doc")
-                    echo "https://hpc-gridware.com/download/12213/?tmstv=1785141625"
+                    echo "https://hpc-gridware.com/download/12222/?tmstv=1785922282"
                     ;;
                 "common")
-                    echo "https://hpc-gridware.com/download/12211/?tmstv=1785141625"
+                    echo "https://hpc-gridware.com/download/12220/?tmstv=1785922282"
                     ;;
                 *)
                     echo ""

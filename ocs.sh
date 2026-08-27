@@ -13,7 +13,7 @@ set -e  # Exit on error
 #set -u  # Treat unset variables as errors
 
 # Default version - can be overridden by environment variable
-OCS_VERSION="${OCS_VERSION:-9.1.4}"
+OCS_VERSION="${OCS_VERSION:-9.1.5}"
 
 echo "Starting Open Cluster Scheduler installation (version: $OCS_VERSION)..."
 
@@ -344,9 +344,31 @@ get_download_urls() {
                     ;;
             esac
             ;;
+        "9.1.5")
+            case "$arch" in
+                "lx-amd64")
+                    echo "https://hpc-gridware.com/download/12288/?tmstv=1787859353"
+                    ;;
+                "lx-arm64")
+                    echo "https://hpc-gridware.com/download/12290/?tmstv=1787859353"
+                    ;;
+                "ulx-amd64")
+                    echo "https://hpc-gridware.com/download/12294/?tmstv=1787859353"
+                    ;;
+                "doc")
+                    echo "https://hpc-gridware.com/download/12302/?tmstv=1787859353"
+                    ;;
+                "common")
+                    echo "https://hpc-gridware.com/download/12300/?tmstv=1787859353"
+                    ;;
+                *)
+                    echo ""
+                    ;;
+            esac
+            ;;
         *)
             echo "ERROR: Unsupported OCS version: $version" >&2
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0, 9.1.1, 9.1.2, 9.1.3, 9.1.4" >&2
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0, 9.1.1, 9.1.2, 9.1.3, 9.1.4, 9.1.5" >&2
             exit 1
             ;;
     esac
@@ -899,12 +921,12 @@ main() {
 
     # Validate version before proceeding
     case "$OCS_VERSION" in
-        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8"|"9.0.9"|"9.0.10"|"9.0.11"|"9.0.12"|"9.1.0"|"9.1.1"|"9.1.2"|"9.1.3"|"9.1.4")
+        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8"|"9.0.9"|"9.0.10"|"9.0.11"|"9.0.12"|"9.1.0"|"9.1.1"|"9.1.2"|"9.1.3"|"9.1.4"|"9.1.5")
             # Supported versions
             ;;
         *)
             echo "ERROR: Unsupported version: $OCS_VERSION"
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0, 9.1.1, 9.1.2, 9.1.3, 9.1.4"
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0, 9.1.1, 9.1.2, 9.1.3, 9.1.4, 9.1.5"
             echo "Usage: OCS_VERSION=9.0.6 $0"
             exit 1
             ;;

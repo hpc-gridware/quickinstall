@@ -1,0 +1,5 @@
+# Ignore the data directory (persistent user data)
+data/
+
+# Ignore Docker Compose override files
+docker-compose.override.yml

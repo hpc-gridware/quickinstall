@@ -3,9 +3,10 @@
 ## Adding a New OCS Version
 
 ### Files to update
-Both of these files are identical and must always be updated together:
+These files are identical and must always be updated together:
 - `ocs.sh` (root)
 - `containers/openSUSE/15.6/ocs.sh`
+- `containers/Rocky/9/ocs.sh`
 
 ### Since 9.1.6: stable URLs on open.clusterscheduler.io
 
@@ -74,3 +75,29 @@ and 60 API calls per minute per client.
    ```
 
 4. **Update `main()` version validation** — add `"X.Y.Z"` to the supported versions pipe list and update the error message string.
+
+## Container Directories: Cross-Distro File Parity
+
+`containers/openSUSE/15.6/` and `containers/Rocky/9/` provide the same
+single-node and 3-node cluster setup. Distro knowledge lives only in the two
+Dockerfiles and the README of each directory; everything else is an identical
+copy that must be changed in both places (do not abstract this - two distros
+do not justify a shared core, and Docker build contexts cannot reach outside
+their directory anyway).
+
+Files that must stay byte-identical across the distro directories:
+`docker-compose.yml`, `startup-master.sh`, `startup-worker.sh`,
+`preflight.sh`, `ocs-env.sh`, `ocs-banner.sh`, `ocs.sh`, `.gitignore`.
+
+Check parity (no output means in sync):
+
+```bash
+for f in docker-compose.yml startup-master.sh startup-worker.sh \
+         preflight.sh ocs-env.sh ocs-banner.sh ocs.sh .gitignore; do
+    diff containers/openSUSE/15.6/$f containers/Rocky/9/$f
+done
+```
+
+Both clusters use the same container names and the 10.100.0.0/16 subnet
+(hardcoded in the startup scripts and compose files to keep them identical),
+so only one distro cluster can run on a host at a time.

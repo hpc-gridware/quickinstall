@@ -7,13 +7,20 @@
 #   curl -s <script_url> | sh                    # Installs default version
 #   curl -s <script_url> | OCS_VERSION=9.0.6 sh  # Installs specific version
 #   OCS_PACKAGE_DIR=/path/to/packages ./ocs.sh   # Uses pre-downloaded packages
+#   OCS_DOWNLOAD_SOURCE=clusterscheduler ./ocs.sh # Downloads all versions from open.clusterscheduler.io
 #
 
 set -e  # Exit on error
 #set -u  # Treat unset variables as errors
 
 # Default version - can be overridden by environment variable
-OCS_VERSION="${OCS_VERSION:-9.1.5}"
+OCS_VERSION="${OCS_VERSION:-9.1.6}"
+
+# Since 9.1.6 packages are published on open.clusterscheduler.io. Older
+# versions keep their classic hpc-gridware.com links; set
+# OCS_DOWNLOAD_SOURCE=clusterscheduler to download them from
+# open.clusterscheduler.io as well.
+OCS_DOWNLOAD_SOURCE="${OCS_DOWNLOAD_SOURCE:-}"
 
 echo "Starting Open Cluster Scheduler installation (version: $OCS_VERSION)..."
 
@@ -55,11 +62,36 @@ check_hostname_resolution() {
     echo "OK: Hostname resolves to $resolved_ip"
 }
 
+# Function to build a download URL on open.clusterscheduler.io
+# The site hosts all versions under a stable naming scheme
+get_clusterscheduler_url() {
+    local version="$1"
+    local arch="$2"
+
+    case "$arch" in
+        "lx-amd64"|"lx-arm64"|"ulx-amd64")
+            echo "https://open.clusterscheduler.io/download/ocs-$version/ocs-$version-bin-$arch.tar.gz"
+            ;;
+        "doc"|"common")
+            echo "https://open.clusterscheduler.io/download/ocs-$version/ocs-$version-$arch.tar.gz"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
 # Function to get download URLs based on version
 get_download_urls() {
     local version="$1"
     local arch="$2"  # lx-amd64, lx-arm64, ulx-amd64
-    
+
+    # open.clusterscheduler.io mirrors all versions, not just 9.1.6 and newer
+    if [ "$OCS_DOWNLOAD_SOURCE" = "clusterscheduler" ]; then
+        get_clusterscheduler_url "$version" "$arch"
+        return
+    fi
+
     case "$version" in
         "9.0.5")
             case "$arch" in
@@ -366,9 +398,12 @@ get_download_urls() {
                     ;;
             esac
             ;;
+        "9.1.6")
+            get_clusterscheduler_url "$version" "$arch"
+            ;;
         *)
             echo "ERROR: Unsupported OCS version: $version" >&2
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0, 9.1.1, 9.1.2, 9.1.3, 9.1.4, 9.1.5" >&2
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0, 9.1.1, 9.1.2, 9.1.3, 9.1.4, 9.1.5, 9.1.6" >&2
             exit 1
             ;;
     esac
@@ -921,12 +956,12 @@ main() {
 
     # Validate version before proceeding
     case "$OCS_VERSION" in
-        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8"|"9.0.9"|"9.0.10"|"9.0.11"|"9.0.12"|"9.1.0"|"9.1.1"|"9.1.2"|"9.1.3"|"9.1.4"|"9.1.5")
+        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8"|"9.0.9"|"9.0.10"|"9.0.11"|"9.0.12"|"9.1.0"|"9.1.1"|"9.1.2"|"9.1.3"|"9.1.4"|"9.1.5"|"9.1.6")
             # Supported versions
             ;;
         *)
             echo "ERROR: Unsupported version: $OCS_VERSION"
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0, 9.1.1, 9.1.2, 9.1.3, 9.1.4, 9.1.5"
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0, 9.1.1, 9.1.2, 9.1.3, 9.1.4, 9.1.5, 9.1.6"
             echo "Usage: OCS_VERSION=9.0.6 $0"
             exit 1
             ;;

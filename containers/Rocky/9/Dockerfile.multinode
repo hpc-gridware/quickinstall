@@ -15,7 +15,10 @@ LABEL description="Open Cluster Scheduler Multi-node on Rocky Linux 9"
 # procps-ng is required: unlike the openSUSE base image, the Rocky base
 # image has no ps/pgrep, the OCS installer (util/arch_variables, inst_sge)
 # fails without ps and the startup scripts check daemons with pgrep.
+# munge (AppStream) provides the MUNGE authentication of OCS 9.1+. No image
+# may carry a key (the EL9 package creates none, the rm makes sure).
 RUN dnf install -y \
+    munge \
     sudo \
     ca-certificates \
     gzip \
@@ -30,7 +33,8 @@ RUN dnf install -y \
     openssh-server \
     openssh-clients \
     man-db \
-    && dnf clean all
+    && dnf clean all \
+    && rm -f /etc/munge/munge.key
 
 # Create gridware user for shared operations across all nodes.
 # 'usermod -p *' unlocks the account for pubkey SSH logins without
@@ -62,7 +66,8 @@ RUN chmod 644 /etc/profile.d/ocs.sh /etc/ocs-banner.sh && \
 # Copy startup scripts
 COPY startup-master.sh /startup-master.sh
 COPY startup-worker.sh /startup-worker.sh
-RUN chmod +x /startup-master.sh /startup-worker.sh
+COPY start-munged.sh /usr/local/sbin/start-munged
+RUN chmod +x /startup-master.sh /startup-worker.sh /usr/local/sbin/start-munged
 
 # Create entrypoint script that selects master or worker startup
 RUN echo '#!/bin/bash' > /entrypoint.sh && \

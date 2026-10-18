@@ -70,6 +70,13 @@ fi
 # Source OCS environment
 . /opt/ocs/default/common/settings.sh
 
+# An installation with MUNGE authentication needs munged before execd starts
+# and before the qconf registration below. The installation decides, not an
+# environment variable, so clusters installed without MUNGE keep working.
+if grep -q '^security_mode.*munge' /opt/ocs/default/common/bootstrap; then
+    /usr/local/sbin/start-munged
+fi
+
 # Wait a bit more for master daemons to be fully ready
 echo "Waiting for master daemons to be ready..."
 sleep 10
@@ -111,10 +118,14 @@ for attempt in 1 2 3 4 5 6 7 8 9 10; do
     fi
 
     if qconf -aattr hostgroup hostlist "$(hostname)" @allhosts; then
-        # A fresh queue instance inherits the default slot count of all.q,
-        # which is 1. Give it the cores of this node, like the installer does.
-        qconf -mattr queue slots "$(nproc)" "all.q@$(hostname)" ||
-            echo "WARNING: cannot set slot count of all.q@$(hostname)"
+        # A fresh queue instance inherits the default slot count of its
+        # queue. Give it the cores of this node, like the installer does -
+        # also in slurm.q, the queue of the Slurm commands (slurm-shim).
+        for queue in all.q slurm.q; do
+            qconf -sq "$queue" > /dev/null 2>&1 || continue
+            qconf -mattr queue slots "$(nproc)" "$queue@$(hostname)" ||
+                echo "WARNING: cannot set slot count of $queue@$(hostname)"
+        done
         REGISTERED=true
         break
     fi

@@ -4,6 +4,12 @@
 # OCS_VERSION is passed through from the shell. When it is unset, ocs.sh
 # installs the latest supported version, which keeps that default in one place:
 #   OCS_VERSION=9.0.12 docker compose up -d --build
+#
+# MUNGE authentication (OCS 9.1+) and the Slurm commands (slurm-shim) are
+# installed by default. Opt out on the first start of a cluster:
+#   OCS_MUNGE=false OCS_SLURM_SHIM=false docker compose up -d --build
+# The MUNGE key is created per cluster in the munge-key volume and removed
+# together with the installation by "docker compose down -v".
 
 services:
   ocs-master:
@@ -17,10 +23,14 @@ services:
         ipv4_address: 10.100.0.10
     volumes:
       - ocs-install:/opt/ocs
+      - munge-key:/etc/munge
       - ./data:/home/gridware
       - ./ocs.sh:/tmp/ocs.sh:ro
     environment:
       - OCS_VERSION
+      - OCS_MUNGE=${OCS_MUNGE:-true}
+      - OCS_SLURM_SHIM=${OCS_SLURM_SHIM:-true}
+      - SLURM_SHIM_VERSION
       - OCS_NODE_TYPE=master
       - OCS_MASTER_HOST=ocs-master
       - OCS_EXEC_HOSTS=ocs-master ocs-worker1 ocs-worker2
@@ -40,6 +50,7 @@ services:
         ipv4_address: 10.100.0.11
     volumes:
       - ocs-install:/opt/ocs
+      - munge-key:/etc/munge:ro
       - ./data:/home/gridware
       - ./ocs.sh:/tmp/ocs.sh:ro
     environment:
@@ -64,6 +75,7 @@ services:
         ipv4_address: 10.100.0.12
     volumes:
       - ocs-install:/opt/ocs
+      - munge-key:/etc/munge:ro
       - ./data:/home/gridware
       - ./ocs.sh:/tmp/ocs.sh:ro
     environment:
@@ -86,4 +98,6 @@ networks:
 
 volumes:
   ocs-install:
+    driver: local
+  munge-key:
     driver: local

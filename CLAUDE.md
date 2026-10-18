@@ -87,13 +87,14 @@ their directory anyway).
 
 Files that must stay byte-identical across the distro directories:
 `docker-compose.yml`, `startup-master.sh`, `startup-worker.sh`,
-`preflight.sh`, `ocs-env.sh`, `ocs-banner.sh`, `ocs.sh`, `.gitignore`.
+`preflight.sh`, `ocs-env.sh`, `ocs-banner.sh`, `ocs.sh`, `start-munged.sh`,
+`.gitignore`.
 
 Check parity (no output means in sync):
 
 ```bash
 for f in docker-compose.yml startup-master.sh startup-worker.sh \
-         preflight.sh ocs-env.sh ocs-banner.sh ocs.sh .gitignore; do
+         preflight.sh ocs-env.sh ocs-banner.sh ocs.sh start-munged.sh .gitignore; do
     diff containers/openSUSE/15.6/$f containers/Rocky/9/$f
 done
 ```
@@ -101,3 +102,40 @@ done
 Both clusters use the same container names and the 10.100.0.0/16 subnet
 (hardcoded in the startup scripts and compose files to keep them identical),
 so only one distro cluster can run on a host at a time.
+
+## MUNGE and slurm-shim
+
+`ocs.sh` has two opt-in switches, both enabled by default in all container
+images (compose: `OCS_MUNGE=${OCS_MUNGE:-true}`, single node: `ENV`):
+
+- `OCS_MUNGE=true`: `setup_munge()` installs munge, creates
+  `/etc/munge/munge.key` if missing (never overwrites one) and starts munged,
+  then OCS is installed with `inst_sge -munge`. Ignored with a warning for
+  9.0.x (MUNGE exists since 9.1.0).
+- `OCS_SLURM_SHIM=true`: `install_slurm_shim()` runs the latest slurm-shim
+  release `install.sh` (checksum-verified, `$SGE_ROOT/slurm-shim`, creates PE
+  `slurm-shim` and queue `slurm.q`) and sets `execd_params
+  ENABLE_ADDGRP_KILL=TRUE`. A failure is a warning, not a failed install.
+  `SLURM_SHIM_VERSION` pins a release (its install.sh and tarball).
+
+**inst_sge pre-check patch.** In `-auto` mode `inst_sge -munge` runs
+`systemctl status munge.service` whenever a `systemctl` binary exists and
+aborts if it fails. The munge packages pull in systemd, but systemd is not
+PID 1 in containers, so the check always fails there. `install_ocs()` seds
+the `type systemctl` line in the unpacked
+`util/install_modules/inst_common.sh` into the PID 1 test that
+`util/arch_variables` uses (same idea as the `util/arch` and `filestat`
+patches). A PATH wrapper for `systemctl` does not work: `inst_sge` hardcodes
+`PATH`. Drop the patch once upstream fixes the check in all supported 9.1.x.
+
+In the containers the key is created by the master (via `ocs.sh`) in the
+`munge-key` volume (`/etc/munge`, read-only on workers); no image may contain
+a key (the openSUSE package generates one, the Dockerfiles delete it).
+Workers and restarting masters run `start-munged` when the shared
+`bootstrap` file says `security_mode munge`, so the installation decides,
+not an environment variable. The single-node `/startup.sh` (generated in the
+Dockerfiles) does the same on a container restart and then starts the daemons.
+
+slurm-shim's own test cluster (`slurm-shim/test/cluster/`) builds on
+`containers/openSUSE/15.6` and installs a dev build; it has to start the
+cluster with `OCS_SLURM_SHIM=false`.

@@ -61,6 +61,52 @@ network name and subnet (`10.100.0.0/16`) as the openSUSE cluster in
 `containers/openSUSE/15.6/`, so only one of the two can run on a host at a
 time. `docker compose down` the other one first.
 
+## Authentication (MUNGE)
+
+OCS 9.1+ is installed with MUNGE authentication (`inst_sge -munge`): qmaster,
+execd and every client command authenticate through `munged`, which runs on
+every node. The key is created on the first start of a cluster - images carry
+no key - and lives in the `munge-key` volume, mounted at `/etc/munge` on all
+nodes. `docker compose down -v` deletes it together with the installation.
+
+```bash
+munge -n | unmunge                                   # STATUS: Success (0)
+grep security_mode /opt/ocs/default/common/bootstrap # security_mode munge
+```
+
+Install without MUNGE: `OCS_MUNGE=false docker compose up -d --build` on the
+first start (single node: `docker run -e OCS_MUNGE=false ...`). OCS 9.0.x has
+no MUNGE support; it is installed without it automatically. Whether a node
+starts `munged` follows the installation (`security_mode` in the bootstrap
+file), so switching needs `docker compose down -v`.
+
+Without a running `munged`, client commands print
+`failed to munge encode authinfo: Socket communication error` and keep
+retrying instead of exiting. Start it again with `start-munged` (as root). If a
+node still cannot talk to the qmaster, check `/var/log/munge/munged.log` on
+both sides.
+
+## Slurm commands (slurm-shim)
+
+The latest [slurm-shim](https://github.com/hpc-gridware/slurm-shim) release is
+installed to `/opt/ocs/slurm-shim`: `sbatch`, `srun`, `squeue`, `scancel`,
+`scontrol`, `sinfo`, `sacct` and `salloc` run on top of OCS and are on the
+`PATH` of every node. The installer adds a `slurm-shim` parallel environment
+and a `slurm.q` queue.
+
+```bash
+docker exec -it -u gridware ocs-master bash
+sbatch --wrap hostname
+squeue
+srun -N 2 hostname          # one task on each of two nodes
+slurm-shim doctor           # checks the setup (as root)
+```
+
+Pin a release with `SLURM_SHIM_VERSION=v0.9.1`, skip it with
+`OCS_SLURM_SHIM=false` (first start). The shim needs internet access to
+github.com; if that fails, OCS is installed anyway and the master log names
+the retry command.
+
 ## Common Commands
 
 ```bash
@@ -80,6 +126,7 @@ Change OCS version: `docker compose down -v`, then start with the new `OCS_VERSI
 | Master (qmaster + execd) | `ocs-master`, 10.100.0.10 |
 | Workers (execd) | `ocs-worker1/2`, 10.100.0.11/12 |
 | OCS installation | Docker volume `ocs-install`, mounted at `/opt/ocs` on all nodes |
+| MUNGE key | Docker volume `munge-key`, mounted at `/etc/munge` on all nodes (read-only on workers) |
 | User data | `./data` on host, mounted at `/home/gridware` on all nodes |
 
 The `gridware` user (uid 1000) has sudo on all nodes. On Linux hosts, startup chowns `/home/gridware` to uid 1000 — chown `./data` back if your host user differs.
@@ -130,6 +177,7 @@ qconf -mattr queue slots "$(nproc)" all.q@$(hostname)
 - `docker-compose.yml` — cluster definition
 - `Dockerfile` / `Dockerfile.multinode` — single-node / cluster image
 - `startup-master.sh` / `startup-worker.sh` — node init scripts
+- `start-munged.sh` - starts munged on a node (`/usr/local/sbin/start-munged`)
 - `ocs-env.sh` / `ocs-banner.sh` — shell environment and welcome banner (`/etc/profile.d/ocs.sh`, `/etc/ocs-banner.sh`)
 - `ocs.sh` — installer (identical copy of the repository root `ocs.sh`)
 - `preflight.sh` — host subnet conflict check

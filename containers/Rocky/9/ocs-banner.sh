@@ -20,6 +20,12 @@ if [ ! -f "$HOME/.hushlogin" ]; then
     echo "  qconf -sel                list execution hosts"
     echo "  qconf -sq all.q           show the default queue"
     echo "  man qsub                  manual pages"
+    if [ -d /opt/ocs/slurm-shim/bin ]; then
+        echo "  sbatch, srun, squeue, sinfo, sacct, scancel   Slurm commands (slurm-shim)"
+    fi
+    if grep -qs '^security_mode.*munge' /opt/ocs/default/common/bootstrap; then
+        echo "  Authentication: MUNGE (munge -n | unmunge to check)"
+    fi
 
     if [ "$(id -u)" = "0" ] && id -u gridware >/dev/null 2>&1; then
         echo "  ----------------------------------------------------------------"

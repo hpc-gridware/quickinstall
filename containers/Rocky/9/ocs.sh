@@ -8,6 +8,8 @@
 #   curl -s <script_url> | OCS_VERSION=9.0.6 sh  # Installs specific version
 #   OCS_PACKAGE_DIR=/path/to/packages ./ocs.sh   # Uses pre-downloaded packages
 #   OCS_DOWNLOAD_SOURCE=clusterscheduler ./ocs.sh # Downloads all versions from open.clusterscheduler.io
+#   OCS_MUNGE=true ./ocs.sh                      # Installs with MUNGE authentication (9.1.0 and later)
+#   OCS_SLURM_SHIM=true ./ocs.sh                 # Also installs the latest slurm-shim (sbatch, srun, ...)
 #
 
 set -e  # Exit on error
@@ -21,6 +23,16 @@ OCS_VERSION="${OCS_VERSION:-9.1.6}"
 # OCS_DOWNLOAD_SOURCE=clusterscheduler to download them from
 # open.clusterscheduler.io as well.
 OCS_DOWNLOAD_SOURCE="${OCS_DOWNLOAD_SOURCE:-}"
+
+# Install with MUNGE authentication (inst_sge -munge, OCS 9.1.0 and later).
+# munged is installed, keyed and started by this script if needed.
+OCS_MUNGE="${OCS_MUNGE:-false}"
+
+# Install the latest slurm-shim release, which provides the Slurm commands
+# (sbatch, srun, squeue, ...) on top of OCS. SLURM_SHIM_VERSION pins a release
+# (e.g. v0.9.1).
+OCS_SLURM_SHIM="${OCS_SLURM_SHIM:-false}"
+SLURM_SHIM_VERSION="${SLURM_SHIM_VERSION:-latest}"
 
 echo "Starting Open Cluster Scheduler installation (version: $OCS_VERSION)..."
 
@@ -781,6 +793,127 @@ download_from_web() {
     done
 }
 
+# Check whether munged answers on this host
+munge_is_running() {
+    munge -n 2>/dev/null | unmunge >/dev/null 2>&1
+}
+
+# Install, key and start munged. inst_sge -munge needs a running munged, and
+# all daemons and client commands of the cluster authenticate through it.
+setup_munge() {
+    echo "Setting up MUNGE authentication..."
+
+    if [ ! -x /usr/sbin/munged ]; then
+        echo "Installing munge..."
+        if command -v apt >/dev/null 2>&1; then
+            sudo apt install -y munge libmunge2
+        elif command -v dnf >/dev/null 2>&1; then
+            sudo dnf install -y munge munge-libs
+        elif command -v yum >/dev/null 2>&1; then
+            sudo yum install -y munge munge-libs
+        elif command -v zypper >/dev/null 2>&1; then
+            sudo zypper install -y --no-recommends munge libmunge2
+        elif command -v pacman >/dev/null 2>&1; then
+            sudo pacman -S --noconfirm munge
+        else
+            echo "ERROR: Unsupported package manager. Please install munge manually."
+            exit 1
+        fi
+    fi
+
+    # An existing key is never replaced: on a multi-host cluster the
+    # administrator distributes one key to all hosts.
+    if ! sudo test -f /etc/munge/munge.key; then
+        echo "Creating MUNGE key /etc/munge/munge.key..."
+        # Written to a private temporary file and renamed, so an aborted
+        # run never leaves a readable or half-written key behind
+        sudo sh -c 'umask 077
+dd if=/dev/urandom bs=1 count=1024 of=/etc/munge/munge.key.new 2>/dev/null &&
+chown munge:munge /etc/munge/munge.key.new &&
+chmod 0400 /etc/munge/munge.key.new &&
+mv /etc/munge/munge.key.new /etc/munge/munge.key'
+    fi
+
+    if ! munge_is_running; then
+        echo "Starting munged..."
+        if [ "$(ps -p 1 -o comm=)" = "systemd" ]; then
+            sudo systemctl enable --now munge || true
+        else
+            # No systemd as init (e.g. containers): start munged directly.
+            # tmpfiles does not run there, so /run/munge may be missing.
+            sudo mkdir -p /run/munge
+            sudo chown munge:munge /run/munge
+            sudo chmod 755 /run/munge
+            sudo runuser -u munge -- /usr/sbin/munged || true
+        fi
+    fi
+
+    if ! munge_is_running; then
+        echo "ERROR: munged is not working. Check the key /etc/munge/munge.key"
+        echo "       and the log /var/log/munge/munged.log"
+        exit 1
+    fi
+    echo "MUNGE is up and running."
+}
+
+# Install the slurm-shim release with its own installer, which verifies the
+# checksum, unpacks to $SGE_ROOT/slurm-shim and configures the cluster. A
+# failure only costs the Slurm commands, so it does not fail the installation.
+install_slurm_shim() {
+    local release_url="https://github.com/hpc-gridware/slurm-shim/releases/download/$SLURM_SHIM_VERSION"
+    if [ "$SLURM_SHIM_VERSION" = "latest" ]; then
+        release_url="https://github.com/hpc-gridware/slurm-shim/releases/latest/download"
+    fi
+    local retry_cmd="curl -fsSL $release_url/install.sh | SLURM_SHIM_VERSION=$SLURM_SHIM_VERSION sh"
+
+    echo "Installing slurm-shim (Slurm commands for Open Cluster Scheduler)..."
+    case "$OCS_VERSION" in
+        9.0.*|9.1.0|9.1.1|9.1.2|9.1.3|9.1.4)
+            echo "WARNING: slurm-shim needs OCS 9.1.5 or later for full functionality."
+            ;;
+    esac
+
+    if ! command -v curl > /dev/null 2>&1; then
+        echo "WARNING: slurm-shim not installed: its installer needs curl."
+        echo "         Install curl, then run as root: $retry_cmd"
+        return 0
+    fi
+
+    # Bounded, so an unreachable GitHub cannot hang the installation. sudo
+    # resets the environment, so the version is passed explicitly.
+    local installer_dir
+    installer_dir=$(mktemp -d)
+    if curl -fsSL --connect-timeout 10 --max-time 120 --retry 3 \
+            -o "$installer_dir/install.sh" "$release_url/install.sh" &&
+        sudo timeout 600 env SLURM_SHIM_VERSION="$SLURM_SHIM_VERSION" \
+            sh -c ". ${MOUNT_DIR}/default/common/settings.sh && sh $installer_dir/install.sh"; then
+        rm -rf "$installer_dir"
+    else
+        rm -rf "$installer_dir"
+        echo "WARNING: slurm-shim installation failed, OCS itself is installed."
+        echo "         Retry as root with the OCS environment: $retry_cmd"
+        return 0
+    fi
+
+    # Recommended by slurm-shim: lets execd remove the srun clients of a job
+    # whose hosts became unreachable. Added to existing execd_params.
+    sudo sh -c "set -e
+. ${MOUNT_DIR}/default/common/settings.sh
+conf=\$(mktemp -d)/global
+qconf -sconf global > \$conf
+if ! grep -q 'ENABLE_ADDGRP_KILL' \$conf; then
+    if grep -qi '^execd_params *none\$' \$conf; then
+        sed -i 's/^execd_params .*/execd_params ENABLE_ADDGRP_KILL=TRUE/' \$conf
+    else
+        sed -i 's/^execd_params .*/&,ENABLE_ADDGRP_KILL=TRUE/' \$conf
+    fi
+    qconf -Mconf \$conf
+fi
+rm -rf \$(dirname \$conf)" || echo "WARNING: cannot set execd_params ENABLE_ADDGRP_KILL=TRUE"
+
+    echo "slurm-shim installed: sbatch, srun, squeue, sinfo, sacct, ... in ${MOUNT_DIR}/slurm-shim/bin"
+}
+
 # Create autoinstall template
 create_autoinstall_template() {
     local hostname=$(hostname)
@@ -852,6 +985,9 @@ install_ocs() {
     if [ -d ${MOUNT_DIR}/default/common ]; then
         echo "Open Cluster Scheduler seems to be already installed!"
         echo "Starting Open Cluster Scheduler daemons."
+        if grep -q '^security_mode.*munge' ${MOUNT_DIR}/default/common/bootstrap 2>/dev/null; then
+            setup_munge
+        fi
         ${MOUNT_DIR}/default/common/sgemaster
         ${MOUNT_DIR}/default/common/sgeexecd
         return 0
@@ -885,8 +1021,24 @@ install_ocs() {
     sudo mkdir -p /etc/rc.d/rc3.d/
     # openSUSE Leap 15.6
     sudo mkdir -p /etc/rc.d/init.d/
-    sudo ./inst_sge -m -x -auto ./template_host
-    
+    if [ "$OCS_MUNGE" = "true" ]; then
+        # In auto mode inst_sge checks munge with "systemctl status
+        # munge.service" whenever a systemctl binary exists. That fails when
+        # systemd is not PID 1 (containers), even with munged running, and
+        # aborts the installation. Run the check only on hosts booted with
+        # systemd, using the same test as util/arch_variables. setup_munge
+        # has already verified munged with a real munge round trip.
+        sudo sed -i 's/^\( *\)type systemctl >\/dev\/null 2>&1$/\1[ "$(ps -p 1 -o comm=)" = "systemd" ]/' \
+            ./util/install_modules/inst_common.sh
+        if ! grep -q 'ps -p 1 -o comm=' ./util/install_modules/inst_common.sh; then
+            echo "WARNING: cannot patch the munge pre-check in inst_common.sh;"
+            echo "         without systemd as init inst_sge -munge may abort."
+        fi
+        sudo ./inst_sge -munge -m -x -auto ./template_host
+    else
+        sudo ./inst_sge -m -x -auto ./template_host
+    fi
+
     # Configure environment
     if [ -f "${MOUNT_DIR}/default/common/settings.sh" ]; then
         # Use . instead of source for POSIX compatibility
@@ -967,11 +1119,28 @@ main() {
             ;;
     esac
 
+    if [ "$OCS_MUNGE" = "true" ]; then
+        case "$OCS_VERSION" in
+            9.0.*)
+                echo "WARNING: MUNGE authentication needs OCS 9.1.0 or later."
+                echo "         Installing $OCS_VERSION without MUNGE."
+                OCS_MUNGE="false"
+                ;;
+        esac
+    fi
+
     install_packages
+    # An existing installation decides itself (install_ocs checks bootstrap)
+    if [ "$OCS_MUNGE" = "true" ] && [ ! -d /opt/ocs/default/common ]; then
+        setup_munge
+    fi
     setup_directories
     download_files
     create_autoinstall_template
     install_ocs
+    if [ "$OCS_SLURM_SHIM" = "true" ]; then
+        install_slurm_shim
+    fi
 }
 
 # Run the script

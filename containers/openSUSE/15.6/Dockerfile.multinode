@@ -7,8 +7,12 @@ LABEL maintainer="HPC Gridware GmbH"
 LABEL description="Open Cluster Scheduler Multi-node on openSUSE Leap 15.6"
 LABEL version="9.1.4"
 
-# Install basic dependencies required by the installation script and OCS runtime
+# Install basic dependencies required by the installation script and OCS
+# runtime. munge provides the MUNGE authentication of OCS 9.1+. Its package
+# generates a key at install time; that key is deleted so that no image
+# carries one - the master creates a fresh key per cluster on first start.
 RUN zypper install -y --no-recommends \
+    munge \
     sudo \
     curl \
     ca-certificates \
@@ -22,7 +26,8 @@ RUN zypper install -y --no-recommends \
     vim \
     openssh \
     man \
-    && zypper clean -a
+    && zypper clean -a \
+    && rm -f /etc/munge/munge.key
 
 # Create gridware user for shared operations across all nodes.
 # 'usermod -p *' unlocks the account for pubkey SSH logins without
@@ -53,7 +58,8 @@ RUN chmod 644 /etc/profile.d/ocs.sh /etc/ocs-banner.sh && \
 # Copy startup scripts
 COPY startup-master.sh /startup-master.sh
 COPY startup-worker.sh /startup-worker.sh
-RUN chmod +x /startup-master.sh /startup-worker.sh
+COPY start-munged.sh /usr/local/sbin/start-munged
+RUN chmod +x /startup-master.sh /startup-worker.sh /usr/local/sbin/start-munged
 
 # Create entrypoint script that selects master or worker startup
 RUN echo '#!/bin/bash' > /entrypoint.sh && \

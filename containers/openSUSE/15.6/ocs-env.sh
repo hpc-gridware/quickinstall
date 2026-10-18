@@ -15,6 +15,16 @@ if [ -z "$SGE_ROOT" ] && [ -f /opt/ocs/default/common/settings.sh ]; then
     . /opt/ocs/default/common/settings.sh
 fi
 
+# Slurm commands (slurm-shim), installed on the shared /opt/ocs. Its installer
+# only writes /etc/profile.d/slurm-shim.sh on the master and that is not read
+# by non-login shells either, so put it on PATH here for every node and shell.
+if [ -d /opt/ocs/slurm-shim/bin ]; then
+    case ":$PATH:" in
+        *:/opt/ocs/slurm-shim/bin:*) ;;
+        *) PATH="/opt/ocs/slurm-shim/bin:$PATH"; export PATH ;;
+    esac
+fi
+
 # Print the banner once per shell (this file can be read twice: via
 # /etc/profile.d and again via ~/.bashrc).
 if [ -z "$_ocs_banner_shown" ] && [ -f /etc/ocs-banner.sh ]; then

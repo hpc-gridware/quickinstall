@@ -80,6 +80,12 @@ if [ -d "/opt/ocs/default/common" ]; then
     if [ -f "/opt/ocs/default/common/settings.sh" ]; then
         . /opt/ocs/default/common/settings.sh
 
+        # An installation with MUNGE authentication needs munged before any
+        # daemon or qconf call. The installation decides, not OCS_MUNGE.
+        if grep -q '^security_mode.*munge' /opt/ocs/default/common/bootstrap; then
+            /usr/local/sbin/start-munged
+        fi
+
         # Start master daemon (skip if already running, e.g. container restart)
         if pgrep -x sge_qmaster > /dev/null; then
             echo "qmaster daemon is already running."

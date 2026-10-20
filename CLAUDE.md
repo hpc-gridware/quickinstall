@@ -103,15 +103,24 @@ Both clusters use the same container names and the 10.100.0.0/16 subnet
 (hardcoded in the startup scripts and compose files to keep them identical),
 so only one distro cluster can run on a host at a time.
 
-## MUNGE and slurm-shim
+## MUNGE, TLS and slurm-shim
 
-`ocs.sh` has two opt-in switches, both enabled by default in all container
-images (compose: `OCS_MUNGE=${OCS_MUNGE:-true}`, single node: `ENV`):
+`ocs.sh` has three security/feature switches. `OCS_MUNGE` and `OCS_TLS`
+default to `true` from 9.1.7 on and to `false` before (resolved in `main()`);
+the container images additionally force `OCS_MUNGE` and `OCS_SLURM_SHIM` on
+(compose: `OCS_MUNGE=${OCS_MUNGE:-true}`, single node: `ENV`), `OCS_TLS` is
+passed through and follows the version default:
 
 - `OCS_MUNGE=true`: `setup_munge()` installs munge, creates
   `/etc/munge/munge.key` if missing (never overwrites one) and starts munged,
   then OCS is installed with `inst_sge -munge`. Ignored with a warning for
   9.0.x (MUNGE exists since 9.1.0).
+- `OCS_TLS=true`: `setup_openssl()` installs OpenSSL 3 if `libssl.so.3` is
+  missing (OCS dlopens it, it is not shipped), then `inst_sge -tls` (combined
+  with `-munge`: `security_mode munge,tls`). Ignored with a warning before
+  9.1.7 (first OCS release with `-tls`) and on ulx-amd64 (unsupported).
+  Certificates are created by OCS itself; the images ship OpenSSL 3 for the
+  workers (`openssl-libs` / `libopenssl3`).
 - `OCS_SLURM_SHIM=true`: `install_slurm_shim()` runs the latest slurm-shim
   release `install.sh` (checksum-verified, `$SGE_ROOT/slurm-shim`, creates PE
   `slurm-shim` and queue `slurm.q`) and sets `execd_params

@@ -15,10 +15,12 @@ LABEL description="Open Cluster Scheduler Multi-node on Rocky Linux 9"
 # procps-ng is required: unlike the openSUSE base image, the Rocky base
 # image has no ps/pgrep, the OCS installer (util/arch_variables, inst_sge)
 # fails without ps and the startup scripts check daemons with pgrep.
-# munge (AppStream) provides the MUNGE authentication of OCS 9.1+. No image
+# munge (AppStream) provides the MUNGE authentication of OCS 9.1+, openssl-libs
+# (OpenSSL 3) the TLS encryption of OCS 9.1.7+. No image
 # may carry a key (the EL9 package creates none, the rm makes sure).
 RUN dnf install -y \
     munge \
+    openssl-libs \
     sudo \
     ca-certificates \
     gzip \

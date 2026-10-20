@@ -13,10 +13,12 @@ LABEL description="Open Cluster Scheduler on Rocky Linux 9"
 # here and conflicts with the full curl package. procps-ng is required:
 # unlike the openSUSE base image, the Rocky base image has no ps, and the
 # OCS installer (util/arch_variables, inst_sge) fails without it.
-# munge (AppStream) provides the MUNGE authentication of OCS 9.1+. No image
+# munge (AppStream) provides the MUNGE authentication of OCS 9.1+, openssl-libs
+# (OpenSSL 3) the TLS encryption of OCS 9.1.7+. No image
 # may carry a key (the EL9 package creates none, the rm makes sure).
 RUN dnf install -y \
     munge \
+    openssl-libs \
     sudo \
     ca-certificates \
     gzip \
@@ -30,6 +32,8 @@ RUN dnf install -y \
 
 # Install with MUNGE authentication and the Slurm commands (slurm-shim) by
 # default; "docker run -e OCS_MUNGE=false -e OCS_SLURM_SHIM=false" opts out.
+# TLS encryption follows the ocs.sh default (on since 9.1.7), -e OCS_TLS=false
+# opts out.
 ENV OCS_MUNGE=true OCS_SLURM_SHIM=true
 
 # Copy the local quickinstall script with our fixes (identical copy of the

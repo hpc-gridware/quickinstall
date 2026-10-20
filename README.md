@@ -24,16 +24,22 @@ Environment variables of `ocs.sh`:
 | `OCS_VERSION` | latest supported | OCS release to install |
 | `OCS_PACKAGE_DIR` | unset | use pre-downloaded packages from this directory |
 | `OCS_DOWNLOAD_SOURCE` | unset | `clusterscheduler` downloads every version from open.clusterscheduler.io |
-| `OCS_MUNGE` | `false` | `true` installs munged and OCS with MUNGE authentication (9.1.0 and later) |
+| `OCS_MUNGE` | `true` since 9.1.7, else `false` | installs munged and OCS with MUNGE authentication (9.1.0 and later) |
+| `OCS_TLS` | `true` since 9.1.7, else `false` | installs OpenSSL 3 and OCS with TLS encryption (9.1.7 and later, not on ulx-amd64) |
 | `OCS_SLURM_SHIM` | `false` | `true` also installs [slurm-shim](https://github.com/hpc-gridware/slurm-shim) (`sbatch`, `srun`, ...) |
 | `SLURM_SHIM_VERSION` | `latest` | slurm-shim release to install, e.g. `v0.9.1` |
 
 ```bash
-curl -s https://raw.githubusercontent.com/hpc-gridware/quickinstall/refs/heads/main/ocs.sh | OCS_MUNGE=true OCS_SLURM_SHIM=true sh
+curl -s https://raw.githubusercontent.com/hpc-gridware/quickinstall/refs/heads/main/ocs.sh | OCS_SLURM_SHIM=true sh
 ```
 
-The container images in `containers/` enable `OCS_MUNGE` and `OCS_SLURM_SHIM`
-by default.
+From 9.1.7 on, OCS is installed with `inst_sge -munge -tls` by default. On a
+multi-host cluster every host then needs munged with the same key
+(`/etc/munge/munge.key`) and OpenSSL 3; TLS certificates are created and
+renewed by OCS itself. `OCS_MUNGE=false OCS_TLS=false` installs without both.
+
+The container images in `containers/` also enable `OCS_MUNGE` for 9.1.x and
+`OCS_SLURM_SHIM` by default.
 
 ## Multi-Node
 

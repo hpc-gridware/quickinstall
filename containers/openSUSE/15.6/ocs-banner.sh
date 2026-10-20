@@ -26,6 +26,9 @@ if [ ! -f "$HOME/.hushlogin" ]; then
     if grep -qs '^security_mode.*munge' /opt/ocs/default/common/bootstrap; then
         echo "  Authentication: MUNGE (munge -n | unmunge to check)"
     fi
+    if grep -qs '^security_mode.*tls' /opt/ocs/default/common/bootstrap; then
+        echo "  Encryption: TLS (OpenSSL 3)"
+    fi
 
     if [ "$(id -u)" = "0" ] && id -u gridware >/dev/null 2>&1; then
         echo "  ----------------------------------------------------------------"

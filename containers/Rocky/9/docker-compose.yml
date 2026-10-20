@@ -5,9 +5,10 @@
 # installs the latest supported version, which keeps that default in one place:
 #   OCS_VERSION=9.0.12 docker compose up -d --build
 #
-# MUNGE authentication (OCS 9.1+) and the Slurm commands (slurm-shim) are
-# installed by default. Opt out on the first start of a cluster:
-#   OCS_MUNGE=false OCS_SLURM_SHIM=false docker compose up -d --build
+# MUNGE authentication (OCS 9.1+), TLS encryption (OCS 9.1.7+) and the Slurm
+# commands (slurm-shim) are installed by default. Opt out on the first start
+# of a cluster:
+#   OCS_MUNGE=false OCS_TLS=false OCS_SLURM_SHIM=false docker compose up -d --build
 # The MUNGE key is created per cluster in the munge-key volume and removed
 # together with the installation by "docker compose down -v".
 
@@ -29,6 +30,7 @@ services:
     environment:
       - OCS_VERSION
       - OCS_MUNGE=${OCS_MUNGE:-true}
+      - OCS_TLS
       - OCS_SLURM_SHIM=${OCS_SLURM_SHIM:-true}
       - SLURM_SHIM_VERSION
       - OCS_NODE_TYPE=master

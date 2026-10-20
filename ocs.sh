@@ -9,6 +9,7 @@
 #   OCS_PACKAGE_DIR=/path/to/packages ./ocs.sh   # Uses pre-downloaded packages
 #   OCS_DOWNLOAD_SOURCE=clusterscheduler ./ocs.sh # Downloads all versions from open.clusterscheduler.io
 #   OCS_MUNGE=true ./ocs.sh                      # Installs with MUNGE authentication (9.1.0 and later)
+#   OCS_MUNGE=false OCS_TLS=false ./ocs.sh       # Installs 9.1.7 or later without MUNGE and TLS
 #   OCS_SLURM_SHIM=true ./ocs.sh                 # Also installs the latest slurm-shim (sbatch, srun, ...)
 #
 
@@ -16,7 +17,7 @@ set -e  # Exit on error
 #set -u  # Treat unset variables as errors
 
 # Default version - can be overridden by environment variable
-OCS_VERSION="${OCS_VERSION:-9.1.6}"
+OCS_VERSION="${OCS_VERSION:-9.1.7}"
 
 # Since 9.1.6 packages are published on open.clusterscheduler.io. Older
 # versions keep their classic hpc-gridware.com links; set
@@ -24,9 +25,12 @@ OCS_VERSION="${OCS_VERSION:-9.1.6}"
 # open.clusterscheduler.io as well.
 OCS_DOWNLOAD_SOURCE="${OCS_DOWNLOAD_SOURCE:-}"
 
-# Install with MUNGE authentication (inst_sge -munge, OCS 9.1.0 and later).
-# munged is installed, keyed and started by this script if needed.
-OCS_MUNGE="${OCS_MUNGE:-false}"
+# Install with MUNGE authentication (inst_sge -munge, OCS 9.1.0 and later)
+# and TLS encryption (inst_sge -tls, OCS 9.1.7 and later). munged and
+# OpenSSL 3 are installed by this script if needed. Both are on by default
+# since 9.1.7 and off for older versions (see main).
+OCS_MUNGE="${OCS_MUNGE:-}"
+OCS_TLS="${OCS_TLS:-}"
 
 # Install the latest slurm-shim release, which provides the Slurm commands
 # (sbatch, srun, squeue, ...) on top of OCS. SLURM_SHIM_VERSION pins a release
@@ -410,12 +414,12 @@ get_download_urls() {
                     ;;
             esac
             ;;
-        "9.1.6")
+        "9.1.6"|"9.1.7")
             get_clusterscheduler_url "$version" "$arch"
             ;;
         *)
             echo "ERROR: Unsupported OCS version: $version" >&2
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0, 9.1.1, 9.1.2, 9.1.3, 9.1.4, 9.1.5, 9.1.6" >&2
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0, 9.1.1, 9.1.2, 9.1.3, 9.1.4, 9.1.5, 9.1.6, 9.1.7" >&2
             exit 1
             ;;
     esac
@@ -856,6 +860,39 @@ mv /etc/munge/munge.key.new /etc/munge/munge.key'
     echo "MUNGE is up and running."
 }
 
+# OCS loads libssl.so.3 at runtime; OpenSSL is not shipped with OCS
+openssl3_is_installed() {
+    PATH="$PATH:/sbin:/usr/sbin" ldconfig -p 2>/dev/null | grep -q 'libssl\.so\.3 '
+}
+
+# Install OpenSSL 3, which TLS encryption needs on every host of the cluster
+setup_openssl() {
+    if openssl3_is_installed; then
+        return 0
+    fi
+
+    echo "Installing OpenSSL 3 for TLS encryption..."
+    if command -v apt >/dev/null 2>&1; then
+        sudo apt install -y libssl3
+    elif command -v dnf >/dev/null 2>&1; then
+        # EL9 and later ship OpenSSL 3 as openssl-libs, EL8 as openssl3-libs
+        sudo dnf install -y openssl-libs
+        openssl3_is_installed || sudo dnf install -y openssl3-libs || true
+    elif command -v yum >/dev/null 2>&1; then
+        sudo yum install -y openssl-libs
+    elif command -v zypper >/dev/null 2>&1; then
+        sudo zypper install -y --no-recommends libopenssl3
+    elif command -v pacman >/dev/null 2>&1; then
+        sudo pacman -S --noconfirm openssl
+    fi
+
+    if ! openssl3_is_installed; then
+        echo "ERROR: OpenSSL 3 (libssl.so.3) not found. Install it, or install"
+        echo "       without TLS encryption: OCS_TLS=false $0"
+        exit 1
+    fi
+}
+
 # Install the slurm-shim release with its own installer, which verifies the
 # checksum, unpacks to $SGE_ROOT/slurm-shim and configures the cluster. A
 # failure only costs the Slurm commands, so it does not fail the installation.
@@ -1021,7 +1058,9 @@ install_ocs() {
     sudo mkdir -p /etc/rc.d/rc3.d/
     # openSUSE Leap 15.6
     sudo mkdir -p /etc/rc.d/init.d/
+    local security_options=""
     if [ "$OCS_MUNGE" = "true" ]; then
+        security_options="-munge"
         # In auto mode inst_sge checks munge with "systemctl status
         # munge.service" whenever a systemctl binary exists. That fails when
         # systemd is not PID 1 (containers), even with munged running, and
@@ -1034,10 +1073,12 @@ install_ocs() {
             echo "WARNING: cannot patch the munge pre-check in inst_common.sh;"
             echo "         without systemd as init inst_sge -munge may abort."
         fi
-        sudo ./inst_sge -munge -m -x -auto ./template_host
-    else
-        sudo ./inst_sge -m -x -auto ./template_host
     fi
+    if [ "$OCS_TLS" = "true" ]; then
+        security_options="$security_options -tls"
+    fi
+    # shellcheck disable=SC2086 # empty or several options
+    sudo ./inst_sge $security_options -m -x -auto ./template_host
 
     # Configure environment
     if [ -f "${MOUNT_DIR}/default/common/settings.sh" ]; then
@@ -1108,16 +1149,43 @@ main() {
 
     # Validate version before proceeding
     case "$OCS_VERSION" in
-        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8"|"9.0.9"|"9.0.10"|"9.0.11"|"9.0.12"|"9.1.0"|"9.1.1"|"9.1.2"|"9.1.3"|"9.1.4"|"9.1.5"|"9.1.6")
+        "9.0.5"|"9.0.6"|"9.0.7"|"9.0.8"|"9.0.9"|"9.0.10"|"9.0.11"|"9.0.12"|"9.1.0"|"9.1.1"|"9.1.2"|"9.1.3"|"9.1.4"|"9.1.5"|"9.1.6"|"9.1.7")
             # Supported versions
             ;;
         *)
             echo "ERROR: Unsupported version: $OCS_VERSION"
-            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0, 9.1.1, 9.1.2, 9.1.3, 9.1.4, 9.1.5, 9.1.6"
+            echo "Supported versions: 9.0.5, 9.0.6, 9.0.7, 9.0.8, 9.0.9, 9.0.10, 9.0.11, 9.0.12, 9.1.0, 9.1.1, 9.1.2, 9.1.3, 9.1.4, 9.1.5, 9.1.6, 9.1.7"
             echo "Usage: OCS_VERSION=9.0.6 $0"
             exit 1
             ;;
     esac
+
+    # MUNGE and TLS are the default since 9.1.7
+    case "$OCS_VERSION" in
+        9.0.*|9.1.[0-6])
+            OCS_MUNGE="${OCS_MUNGE:-false}"
+            OCS_TLS="${OCS_TLS:-false}"
+            ;;
+        *)
+            OCS_MUNGE="${OCS_MUNGE:-true}"
+            OCS_TLS="${OCS_TLS:-true}"
+            ;;
+    esac
+
+    if [ "$OCS_TLS" = "true" ]; then
+        case "$OCS_VERSION" in
+            9.0.*|9.1.[0-6])
+                echo "WARNING: TLS encryption needs OCS 9.1.7 or later."
+                echo "         Installing $OCS_VERSION without TLS."
+                OCS_TLS="false"
+                ;;
+        esac
+    fi
+    if [ "$OCS_TLS" = "true" ] && [ "$(detect_architecture)" = "ulx-amd64" ]; then
+        echo "WARNING: TLS encryption is not supported on ulx-amd64."
+        echo "         Installing without TLS."
+        OCS_TLS="false"
+    fi
 
     if [ "$OCS_MUNGE" = "true" ]; then
         case "$OCS_VERSION" in
@@ -1133,6 +1201,9 @@ main() {
     # An existing installation decides itself (install_ocs checks bootstrap)
     if [ "$OCS_MUNGE" = "true" ] && [ ! -d /opt/ocs/default/common ]; then
         setup_munge
+    fi
+    if [ "$OCS_TLS" = "true" ] && [ ! -d /opt/ocs/default/common ]; then
+        setup_openssl
     fi
     setup_directories
     download_files

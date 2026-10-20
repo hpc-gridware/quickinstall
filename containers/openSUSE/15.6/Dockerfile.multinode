@@ -8,11 +8,13 @@ LABEL description="Open Cluster Scheduler Multi-node on openSUSE Leap 15.6"
 LABEL version="9.1.4"
 
 # Install basic dependencies required by the installation script and OCS
-# runtime. munge provides the MUNGE authentication of OCS 9.1+. Its package
-# generates a key at install time; that key is deleted so that no image
-# carries one - the master creates a fresh key per cluster on first start.
+# runtime. munge provides the MUNGE authentication of OCS 9.1+, libopenssl3 the
+# TLS encryption of OCS 9.1.7+. The munge package generates a key at install
+# time; that key is deleted so that no image carries one - the master creates
+# a fresh key per cluster on first start.
 RUN zypper install -y --no-recommends \
     munge \
+    libopenssl3 \
     sudo \
     curl \
     ca-certificates \

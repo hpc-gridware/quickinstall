@@ -8,11 +8,13 @@ LABEL description="Open Cluster Scheduler on openSUSE Leap 15.6"
 LABEL version="9.1.4"
 
 # Install basic dependencies required by the installation script. munge
-# provides the MUNGE authentication of OCS 9.1+. Its package generates a key
+# provides the MUNGE authentication of OCS 9.1+, libopenssl3 the TLS
+# encryption of OCS 9.1.7+. Its package generates a key
 # at install time; that key is deleted so that no image carries one - ocs.sh
 # creates a fresh key on first start.
 RUN zypper install -y --no-recommends \
     munge \
+    libopenssl3 \
     sudo \
     curl \
     ca-certificates \
@@ -26,6 +28,8 @@ RUN zypper install -y --no-recommends \
 
 # Install with MUNGE authentication and the Slurm commands (slurm-shim) by
 # default; "docker run -e OCS_MUNGE=false -e OCS_SLURM_SHIM=false" opts out.
+# TLS encryption follows the ocs.sh default (on since 9.1.7), -e OCS_TLS=false
+# opts out.
 ENV OCS_MUNGE=true OCS_SLURM_SHIM=true
 
 # Copy the local quickinstall script with our fixes

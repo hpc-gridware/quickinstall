@@ -62,7 +62,7 @@ nodes. `docker compose down -v` deletes it together with the installation.
 
 ```bash
 munge -n | unmunge                                   # STATUS: Success (0)
-grep security_mode /opt/ocs/default/common/bootstrap # security_mode munge
+grep security_mode /opt/ocs/default/common/bootstrap # security_mode munge,tls
 ```
 
 Install without MUNGE: `OCS_MUNGE=false docker compose up -d --build` on the
@@ -76,6 +76,18 @@ Without a running `munged`, client commands print
 retrying instead of exiting. Start it again with `start-munged` (as root). If a
 node still cannot talk to the qmaster, check `/var/log/munge/munged.log` on
 both sides.
+
+## Encryption (TLS)
+
+OCS 9.1.7+ is also installed with TLS encryption (`inst_sge -tls`): all
+communication between the daemons and the client commands is encrypted. The
+images contain OpenSSL 3, which OCS needs on every node; certificates are
+created and renewed by OCS itself. Together with MUNGE the bootstrap file says
+`security_mode munge,tls`.
+
+Install without TLS: `OCS_TLS=false docker compose up -d --build` on the
+first start (single node: `docker run -e OCS_TLS=false ...`). Versions before
+9.1.7 are installed without TLS automatically.
 
 ## Slurm commands (slurm-shim)
 
